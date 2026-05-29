@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CaptureForm } from "@/components/CaptureForm";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TodayStatsCard } from "@/components/TodayStatsCard";
+import { ExtrasPendingCard } from "@/components/ExtrasPendingCard";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,12 @@ export default async function HomePage() {
         </div>
         <div className="flex gap-2">
           <Link
+            href="/extras"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Extras
+          </Link>
+          <Link
             href="/historico"
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
@@ -34,6 +41,8 @@ export default async function HomePage() {
       </header>
 
       <TodayStatsCard />
+
+      <ExtrasPendingCard />
 
       <CaptureForm />
     </main>
