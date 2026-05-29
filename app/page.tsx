@@ -5,6 +5,7 @@ import { CaptureForm } from "@/components/CaptureForm";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TodayStatsCard } from "@/components/TodayStatsCard";
 import { ExtrasPendingCard } from "@/components/ExtrasPendingCard";
+import { CashStatusCard } from "@/components/CashStatusCard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,13 @@ export default async function HomePage() {
           <h1 className="text-xl font-bold text-slate-900">TOCS</h1>
           <p className="text-xs text-slate-500">{user.email}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link
+            href="/caixa"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Caixa
+          </Link>
           <Link
             href="/extras"
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
@@ -41,6 +48,8 @@ export default async function HomePage() {
       </header>
 
       <TodayStatsCard />
+
+      <CashStatusCard />
 
       <ExtrasPendingCard />
 
