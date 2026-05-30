@@ -1,10 +1,16 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 import { CashCloseForm } from "@/components/CashCloseForm";
 import { closeSession } from "../../actions";
 
 export const dynamic = "force-dynamic";
+
+const DRAWER_LABEL: Record<string, string> = {
+  DLV: "Delivery",
+  LTDA: "Salão",
+};
 
 export default async function FecharCaixaPage({
   params,
@@ -15,41 +21,47 @@ export default async function FecharCaixaPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: session } = await supabase
-    .from("cash_sessions")
-    .select("id, opening_amount, status, cash_drawers(name)")
-    .eq("id", params.id)
-    .single();
+  const [{ data: session }, { data: movs }] = await Promise.all([
+    supabase
+      .from("cash_sessions")
+      .select("id, opening_amount, status, cash_drawers(name)")
+      .eq("id", params.id)
+      .single(),
+    supabase
+      .from("cash_movements")
+      .select("direction, amount")
+      .eq("session_id", params.id),
+  ]);
 
   if (!session) notFound();
   if (session.status !== "open") {
     redirect("/caixa");
   }
 
-  const drawerName =
+  const drawerNameRaw =
     (session as unknown as { cash_drawers: { name: string } | null })
       .cash_drawers?.name || "—";
+  const drawerName = DRAWER_LABEL[drawerNameRaw] || drawerNameRaw;
+
+  const ins = (movs || [])
+    .filter((m) => m.direction === "in")
+    .reduce((s, m) => s + Number(m.amount), 0);
+  const outs = (movs || [])
+    .filter((m) => m.direction === "out")
+    .reduce((s, m) => s + Number(m.amount), 0);
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Fechar caixa</h1>
-          <p className="text-xs text-slate-500">{drawerName}</p>
-        </div>
-        <Link
-          href="/caixa"
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-        >
-          Cancelar
-        </Link>
-      </header>
-
-      <CashCloseForm
-        sessionId={session.id}
-        openingAmount={Number(session.opening_amount)}
-        action={closeSession}
-      />
-    </main>
+    <Shell>
+      <TopBar title="Fechar caixa" subtitle={drawerName} backHref="/caixa" />
+      <div className="mt-2 px-4">
+        <CashCloseForm
+          sessionId={session.id}
+          openingAmount={Number(session.opening_amount)}
+          inflows={ins}
+          outflows={outs}
+          action={closeSession}
+        />
+      </div>
+    </Shell>
   );
 }

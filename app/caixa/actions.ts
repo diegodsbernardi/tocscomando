@@ -108,7 +108,6 @@ export async function reopenSession(id: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Não autenticado" };
 
-  // Confere se existe outra sessão aberta no mesmo caixa
   const { data: target } = await supabase
     .from("cash_sessions")
     .select("drawer_id")
@@ -150,5 +149,50 @@ export async function deleteSession(id: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/caixa");
   revalidatePath("/");
+  return { ok: true };
+}
+
+// ---------- MOVIMENTAÇÕES ----------
+export async function addMovement(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Não autenticado" };
+
+  const session_id = String(formData.get("session_id") || "");
+  const direction = String(formData.get("direction") || "");
+  const category = String(formData.get("category") || "").trim();
+  const amount = Number(formData.get("amount") || 0);
+  const note = String(formData.get("note") || "").trim() || null;
+
+  if (!session_id) return { ok: false, error: "Sessão inválida." };
+  if (direction !== "in" && direction !== "out") return { ok: false, error: "Direção inválida." };
+  if (!category) return { ok: false, error: "Escolha uma categoria." };
+  if (!(amount > 0)) return { ok: false, error: "Valor precisa ser maior que zero." };
+  if (category === "Outros" && !note) {
+    return { ok: false, error: "Em 'Outros' o motivo é obrigatório." };
+  }
+
+  const { error } = await supabase.from("cash_movements").insert({
+    session_id,
+    direction,
+    category,
+    amount,
+    note,
+    created_by: user.id,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/caixa");
+  return { ok: true };
+}
+
+export async function deleteMovement(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Não autenticado" };
+
+  const { error } = await supabase.from("cash_movements").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/caixa");
   return { ok: true };
 }

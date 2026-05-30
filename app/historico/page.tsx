@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteReportButton } from "@/components/DeleteReportButton";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 
 export const dynamic = "force-dynamic";
 
@@ -55,18 +56,11 @@ export default async function HistoricoPage() {
   );
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Relatórios</h1>
-        <Link
-          href="/"
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-        >
-          Voltar
-        </Link>
-      </header>
+    <Shell>
+      <TopBar title="Relatórios" subtitle="cupons de hoje" backHref="/" />
+      <div className="px-4">
 
-      <section className="mb-6 space-y-2 rounded-2xl bg-white p-5 shadow">
+      <section className="mb-6 mt-2 space-y-2 rounded-2xl bg-white p-5 shadow">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Totais do dia
         </h2>
@@ -117,7 +111,8 @@ export default async function HistoricoPage() {
           </article>
         ))}
       </section>
-    </main>
+      </div>
+    </Shell>
   );
 }
 

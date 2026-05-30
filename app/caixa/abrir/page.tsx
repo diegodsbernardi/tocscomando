@@ -1,12 +1,18 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 import { CashOpenForm } from "@/components/CashOpenForm";
 import { openSession } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 type Drawer = { id: string; name: string };
+
+const DRAWER_LABEL: Record<string, string> = {
+  DLV: "Delivery",
+  LTDA: "Salão",
+};
 
 export default async function AbrirCaixaPage({
   searchParams,
@@ -27,24 +33,19 @@ export default async function AbrirCaixaPage({
     searchParams.drawer && list.find((d) => d.id === searchParams.drawer)
       ? searchParams.drawer
       : list[0]?.id || "";
+  const selected = list.find((d) => d.id === preselected);
+  const subtitle = selected ? DRAWER_LABEL[selected.name] || selected.name : "";
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Abrir caixa</h1>
-        <Link
-          href="/caixa"
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-        >
-          Cancelar
-        </Link>
-      </header>
-
-      <CashOpenForm
-        drawers={list}
-        preselectedDrawerId={preselected}
-        action={openSession}
-      />
-    </main>
+    <Shell>
+      <TopBar title="Abrir caixa" subtitle={subtitle} backHref="/caixa" />
+      <div className="mt-2 px-4">
+        <CashOpenForm
+          drawers={list.map((d) => ({ id: d.id, name: DRAWER_LABEL[d.name] || d.name }))}
+          preselectedDrawerId={preselected}
+          action={openSession}
+        />
+      </div>
+    </Shell>
   );
 }

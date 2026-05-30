@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { startOfTuesdayWeek, endOfTuesdayWeek, todayISO, formatDateBR } from "@/lib/week";
 import { CloseWeekButton, DeleteShiftButton } from "@/components/MotoboyShiftActions";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 
 export const dynamic = "force-dynamic";
 
@@ -134,33 +136,12 @@ export default async function MotoboysPage({
   })();
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Motoboys</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/motoboys/bairros"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Bairros
-          </Link>
-          <Link
-            href="/motoboys/cadastro"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Cadastro
-          </Link>
-          <Link
-            href="/"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Voltar
-          </Link>
-        </div>
-      </header>
+    <Shell>
+      <TopBar title="Motoboys" subtitle="entregas dos terceiros" />
+      <div className="px-4">
 
       {/* Hoje */}
-      <section className="mb-4 rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-lg">
+      <section className="mb-4 rounded-hero bg-cyan-hero p-5 text-white shadow-glow reveal d2">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-white/80">Hoje</span>
           <span className="text-xs text-white/80">
@@ -270,14 +251,15 @@ export default async function MotoboysPage({
       </section>
 
       {motoboysCount === 0 && (
-        <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="mt-4 rounded-2xl bg-warn-bg p-4 text-sm text-warn">
           Nenhum motoboy cadastrado ainda.{" "}
-          <Link href="/motoboys/cadastro" className="font-semibold underline">
+          <Link href="/cadastros" className="font-bold underline">
             Cadastrar agora →
           </Link>
         </p>
       )}
-    </main>
+      </div>
+    </Shell>
   );
 }
 

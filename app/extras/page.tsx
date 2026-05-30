@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 import { MarkPaidToggle, DeleteExtraButton } from "@/components/ExtraRowActions";
+import { brl } from "@/lib/format";
+import { isoWeekRange, isoToday, VINCULO_LIMIT, levelForCount } from "@/lib/vinculo";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +18,8 @@ type Row = {
   paid: boolean;
   paid_amount: number | null;
   notes: string | null;
-  employees: { name: string; centro_custo: Centro } | null;
+  employees: { id: string; name: string; centro_custo: Centro } | null;
 };
-
-function brl(n: number) {
-  return Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function currentMonth() {
   const d = new Date();
@@ -37,41 +37,66 @@ function monthRange(ym: string) {
 function fmtDayBR(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("pt-BR", {
-    weekday: "short",
     day: "2-digit",
     month: "short",
   });
 }
 
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1)
+    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    .toUpperCase();
+}
+
 export default async function ExtrasPage({
   searchParams,
 }: {
-  searchParams: { mes?: string; status?: string; centro?: string };
+  searchParams: { mes?: string; centro?: string };
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const mes = searchParams.mes || currentMonth();
-  const status = searchParams.status || "todos"; // todos | pendente | pago
-  const centro = searchParams.centro || "todos"; // todos | atendimento | cozinha
+  const centro = (searchParams.centro || "todos") as
+    | "todos"
+    | "atendimento"
+    | "cozinha";
   const { start, end } = monthRange(mes);
+  const week = isoWeekRange(isoToday());
 
-  let q = supabase
+  // Buscar registros do mês
+  const monthQuery = supabase
     .from("extra_payments")
-    .select("id, work_date, amount, paid, paid_amount, notes, employees(name, centro_custo)")
+    .select("id, work_date, amount, paid, paid_amount, notes, employees(id, name, centro_custo)")
     .gte("work_date", start)
     .lt("work_date", end)
     .order("work_date", { ascending: false })
     .order("created_at", { ascending: true });
 
-  if (status === "pendente") q = q.eq("paid", false);
-  if (status === "pago") q = q.eq("paid", true);
+  // Buscar todos da semana corrente (para contagem de vínculo)
+  const weekQuery = supabase
+    .from("extra_payments")
+    .select("employee_id")
+    .gte("work_date", week.start)
+    .lte("work_date", week.end);
 
-  const { data } = await q;
-  let rows = ((data || []) as unknown as Row[]).filter((r) => r.employees);
+  const [{ data: monthData }, { data: weekData }] = await Promise.all([
+    monthQuery,
+    weekQuery,
+  ]);
+
+  let rows = ((monthData || []) as unknown as Row[]).filter((r) => r.employees);
   if (centro !== "todos") {
     rows = rows.filter((r) => r.employees?.centro_custo === centro);
+  }
+
+  // Contagem de vindas na semana por employee
+  const weekCount = new Map<string, number>();
+  for (const r of weekData || []) {
+    const id = (r as { employee_id: string }).employee_id;
+    weekCount.set(id, (weekCount.get(id) ?? 0) + 1);
   }
 
   const totals = rows.reduce(
@@ -84,6 +109,9 @@ export default async function ExtrasPage({
     { total: 0, pago: 0, pendente: 0 },
   );
 
+  // Pessoas em perigo (semana atual): conta funcionários distintos com count >= LIMITE
+  const dangerCount = Array.from(weekCount.values()).filter((c) => c >= VINCULO_LIMIT).length;
+
   // Agrupa por dia
   const grouped = rows.reduce((acc, r) => {
     (acc[r.work_date] ||= []).push(r);
@@ -92,139 +120,156 @@ export default async function ExtrasPage({
   const days = Object.keys(grouped);
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Extras</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/extras/funcionarios"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Funcionários
-          </Link>
-          <Link
-            href="/"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Voltar
-          </Link>
-        </div>
-      </header>
+    <Shell>
+      <TopBar title="Extras" subtitle="freelancers do mês" />
 
-      {/* Filtros */}
-      <form method="GET" className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-white p-3 shadow">
-        <label className="col-span-3 flex flex-col text-xs font-medium text-slate-600">
-          Mês
-          <input
-            type="month"
-            name="mes"
-            defaultValue={mes}
-            className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+      <div className="px-4">
+        {/* HERO */}
+        <section className="relative mt-1 overflow-hidden rounded-hero p-5 px-5 text-white shadow-glow bg-cyan-hero reveal d2">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10"
           />
-        </label>
-        <label className="flex flex-col text-xs font-medium text-slate-600">
-          Status
-          <select
-            name="status"
-            defaultValue={status}
-            className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-          >
-            <option value="todos">Todos</option>
-            <option value="pendente">Pendentes</option>
-            <option value="pago">Pagos</option>
-          </select>
-        </label>
-        <label className="flex flex-col text-xs font-medium text-slate-600">
-          Centro
-          <select
-            name="centro"
-            defaultValue={centro}
-            className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-          >
-            <option value="todos">Todos</option>
-            <option value="atendimento">Atendimento</option>
-            <option value="cozinha">Cozinha</option>
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="col-span-1 self-end rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
+          <div className="text-xs font-semibold tracking-[0.5px] opacity-85">
+            {monthLabel(mes)}
+          </div>
+          <div className="mt-0.5 font-display text-3xl font-extrabold tracking-[-1px]">
+            {brl(totals.total)}
+          </div>
+          <div className="mt-3 flex border-t border-white/20 pt-3">
+            <SplitCol label="PAGO" value={brl(totals.pago)} />
+            <SplitCol label="PENDENTE" value={brl(totals.pendente)} highlight />
+            <SplitCol label="EM PERIGO" value={String(dangerCount)} />
+          </div>
+        </section>
+
+        {/* Filtros centro de custo */}
+        <div className="mt-4 flex gap-2 reveal d3">
+          <FilterChip href={`?mes=${mes}&centro=todos`} label="Todos" active={centro === "todos"} />
+          <FilterChip href={`?mes=${mes}&centro=cozinha`} label="Cozinha" active={centro === "cozinha"} />
+          <FilterChip href={`?mes=${mes}&centro=atendimento`} label="Atendimento" active={centro === "atendimento"} />
+        </div>
+
+        {/* CTA novo */}
+        <Link
+          href="/extras/novo"
+          className="mt-3 block w-full rounded-2xl bg-brandyellow py-3.5 text-center text-[15px] font-bold text-navy shadow-card"
         >
-          Filtrar
-        </button>
-      </form>
+          + Novo extra
+        </Link>
 
-      {/* Resumo */}
-      <section className="mb-4 rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-lg">
-        <div className="flex items-baseline justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-white/80">
-            {new Date(`${mes}-02`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-          </span>
-          <span className="text-xs tabular-nums text-white/80">
-            {rows.length} {rows.length === 1 ? "registro" : "registros"}
-          </span>
-        </div>
-        <p className="mt-1 text-3xl font-bold tabular-nums">{brl(totals.total)}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/20 pt-3">
-          <div className="text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/70">Pago</p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums">{brl(totals.pago)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/70">Pendente</p>
-            <p className="mt-0.5 text-sm font-semibold tabular-nums">{brl(totals.pendente)}</p>
-          </div>
-        </div>
-      </section>
+        {/* Lista */}
+        <div className="mt-4 space-y-3 reveal d4">
+          {days.length === 0 && (
+            <p className="rounded-card bg-white p-6 text-center text-sm text-muted shadow-card">
+              Nenhum extra neste filtro.
+            </p>
+          )}
 
-      <Link
-        href="/extras/novo"
-        className="mb-4 flex items-center justify-center rounded-2xl bg-brand py-3 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+          {days.map((day) => (
+            <section key={day}>
+              <h3 className="mb-1 px-1 text-[11px] font-bold uppercase tracking-wider text-muted">
+                {fmtDayBR(day)}
+              </h3>
+              <div className="space-y-2">
+                {grouped[day].map((r) => {
+                  const f = r.employees!;
+                  const c = weekCount.get(f.id) || 0;
+                  const lvl = levelForCount(c);
+                  return (
+                    <article
+                      key={r.id}
+                      className="flex items-center gap-3 rounded-card bg-white p-3 px-[15px] shadow-card"
+                    >
+                      <Link href={`/extras/perfil/${f.id}`} className="min-w-0 flex-1">
+                        <strong className="block truncate text-[15px] font-bold text-navy">
+                          {f.name}
+                        </strong>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <SectorTag centro={f.centro_custo} />
+                          {lvl === "danger" && (
+                            <span className="rounded bg-danger-bg px-2 py-0.5 text-[10px] font-extrabold text-danger">
+                              ⚠ {c}x/sem
+                            </span>
+                          )}
+                          {lvl === "warn" && (
+                            <span className="rounded bg-warn-bg px-2 py-0.5 text-[10px] font-extrabold text-warn">
+                              {c}x/sem
+                            </span>
+                          )}
+                          {r.notes && (
+                            <span className="text-[11px] text-muted">· {r.notes}</span>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="font-display text-[17px] font-bold tabular-nums">
+                          {brl(Number(r.amount))}
+                        </span>
+                        <MarkPaidToggle id={r.id} paid={r.paid} />
+                      </div>
+                      <DeleteExtraButton id={r.id} />
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+function SplitCol({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex-1">
+      <div className="text-[11px] font-semibold opacity-80">{label}</div>
+      <div
+        className={`mt-0.5 text-[17px] font-bold tabular-nums ${
+          highlight ? "text-brandyellow" : ""
+        }`}
       >
-        + Novo extra
-      </Link>
+        {value}
+      </div>
+    </div>
+  );
+}
 
-      {days.length === 0 && (
-        <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow">
-          Nenhum extra neste filtro.
-        </p>
-      )}
+function FilterChip({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex-1 rounded-xl border-[1.5px] py-2 text-center text-xs font-semibold transition ${
+        active
+          ? "border-navy bg-navy text-white"
+          : "border-line bg-white text-muted"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
 
-      {days.map((day) => {
-        const list = grouped[day];
-        const sum = list.reduce((a, r) => a + Number(r.amount), 0);
-        return (
-          <section key={day} className="mb-4">
-            <h2 className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <span>{fmtDayBR(day)}</span>
-              <span className="tabular-nums">{brl(sum)}</span>
-            </h2>
-            <div className="space-y-2">
-              {list.map((r) => (
-                <article
-                  key={r.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 shadow"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-800">
-                      {r.employees?.name}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      {r.employees?.centro_custo === "atendimento" ? "Atendimento" : "Cozinha"}
-                      {r.notes ? ` · ${r.notes}` : ""}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums text-slate-700">
-                    {brl(Number(r.amount))}
-                  </span>
-                  <MarkPaidToggle id={r.id} paid={r.paid} />
-                  <DeleteExtraButton id={r.id} />
-                </article>
-              ))}
-            </div>
-          </section>
-        );
-      })}
-    </main>
+function SectorTag({ centro }: { centro: Centro }) {
+  if (centro === "cozinha") {
+    return (
+      <span className="rounded bg-cozinha-bg px-2 py-0.5 text-[10px] font-bold text-cozinha">
+        Cozinha
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-atend-bg px-2 py-0.5 text-[10px] font-bold text-atend">
+      Atendimento
+    </span>
   );
 }

@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ShiftRideEditor } from "@/components/ShiftRideEditor";
 import { DeleteShiftButton } from "@/components/MotoboyShiftActions";
+import { Shell } from "@/components/ui/Shell";
+import { TopBar } from "@/components/ui/TopBar";
 import { formatDateBR } from "@/lib/week";
 
 export const dynamic = "force-dynamic";
@@ -40,49 +41,42 @@ export default async function TurnoDetalhePage({
     motoboys: { id: string; name: string; phone: string | null } | null;
   }).motoboys;
 
-  return (
-    <main className="mx-auto max-w-md px-4 py-6">
-      <header className="mb-4 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-900">{motoboy?.name ?? "—"}</h1>
-          <p className="text-xs text-slate-500">
-            {formatDateBR(shift.work_date, { weekday: "long", day: "2-digit", month: "long" })}
-            {shift.arrival_time && ` · chegou ${String(shift.arrival_time).slice(0, 5)}`}
-          </p>
-          {motoboy?.phone && (
-            <a
-              href={`tel:${motoboy.phone.replace(/\D/g, "")}`}
-              className="mt-1 inline-block text-xs font-semibold text-brand-dark underline"
-            >
-              {motoboy.phone}
-            </a>
-          )}
-          {shift.paid && (
-            <p className="mt-1 inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-              Pago
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <DeleteShiftButton id={shift.id} />
-          <Link
-            href="/motoboys"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Voltar
-          </Link>
-        </div>
-      </header>
+  const subtitle = `${formatDateBR(shift.work_date, { weekday: "short", day: "2-digit", month: "short" })}${
+    shift.arrival_time ? ` · chegou ${String(shift.arrival_time).slice(0, 5)}` : ""
+  }`;
 
-      <ShiftRideEditor
-        shiftId={shift.id}
-        areas={(areas || []).map((a) => ({ id: a.id, name: a.name, fee: Number(a.fee) }))}
-        initialRides={(rides || []).map((r) => ({
-          area_id: r.area_id,
-          rides_count: Number(r.rides_count),
-          fee_at_time: Number(r.fee_at_time),
-        }))}
+  return (
+    <Shell>
+      <TopBar
+        title={motoboy?.name ?? "Turno"}
+        subtitle={subtitle}
+        backHref="/motoboys"
+        rightSlot={<DeleteShiftButton id={shift.id} />}
       />
-    </main>
+      <div className="mt-2 px-4">
+        {motoboy?.phone && (
+          <a
+            href={`tel:${motoboy.phone.replace(/\D/g, "")}`}
+            className="mb-3 inline-block text-xs font-bold text-cyan underline"
+          >
+            📞 {motoboy.phone}
+          </a>
+        )}
+        {shift.paid && (
+          <p className="mb-3 inline-block rounded bg-ok-bg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ok">
+            Pago
+          </p>
+        )}
+        <ShiftRideEditor
+          shiftId={shift.id}
+          areas={(areas || []).map((a) => ({ id: a.id, name: a.name, fee: Number(a.fee) }))}
+          initialRides={(rides || []).map((r) => ({
+            area_id: r.area_id,
+            rides_count: Number(r.rides_count),
+            fee_at_time: Number(r.fee_at_time),
+          }))}
+        />
+      </div>
+    </Shell>
   );
 }
