@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/week";
-import { MIN_DAILY_PAYMENT } from "@/app/motoboys/actions";
+import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 
 type Ride = { rides_count: number; fee_at_time: number };
 type Shift = { id: string; motoboys: { name: string } | null; motoboy_shift_rides: Ride[] };

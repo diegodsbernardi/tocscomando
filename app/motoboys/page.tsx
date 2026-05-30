@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { MIN_DAILY_PAYMENT } from "./actions";
+import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { startOfTuesdayWeek, endOfTuesdayWeek, todayISO, formatDateBR } from "@/lib/week";
 import { CloseWeekButton, DeleteShiftButton } from "@/components/MotoboyShiftActions";
 
