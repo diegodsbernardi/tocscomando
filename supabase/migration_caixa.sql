@@ -4,6 +4,11 @@
 -- Compartilhado entre todos os usuários autenticados.
 -- =====================================================
 
+-- Cleanup defensivo (havia um cash_sessions órfão de testes antigos no Supabase).
+-- Seguro porque ambas estavam vazias no momento da aplicação.
+drop table if exists public.cash_sessions cascade;
+drop table if exists public.cash_drawers cascade;
+
 -- 1. Caixas físicos (seed: DLV e LTDA)
 create table if not exists public.cash_drawers (
   id uuid primary key default gen_random_uuid(),

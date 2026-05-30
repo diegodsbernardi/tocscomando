@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { TodayStatsCard } from "@/components/TodayStatsCard";
 import { ExtrasPendingCard } from "@/components/ExtrasPendingCard";
 import { CashStatusCard } from "@/components/CashStatusCard";
+import { MotoboysTodayCard } from "@/components/MotoboysTodayCard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,12 @@ export default async function HomePage() {
             Caixa
           </Link>
           <Link
+            href="/motoboys"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Motoboys
+          </Link>
+          <Link
             href="/extras"
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
@@ -50,6 +57,8 @@ export default async function HomePage() {
       <TodayStatsCard />
 
       <CashStatusCard />
+
+      <MotoboysTodayCard />
 
       <ExtrasPendingCard />
 
