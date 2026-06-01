@@ -7,6 +7,7 @@ import { TodayHero } from "@/components/dashboard/TodayHero";
 import { QuickStats } from "@/components/dashboard/QuickStats";
 import { CaptureActionCard } from "@/components/dashboard/CaptureActionCard";
 import { ExtrasMiniCard } from "@/components/dashboard/ExtrasMiniCard";
+import { CloseDayCard } from "@/components/dashboard/CloseDayCard";
 import { firstName, greetingForNow } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export default async function HomePage() {
       <TodayHero />
       <QuickStats />
       <CaptureActionCard />
+      <CloseDayCard />
       <ExtrasMiniCard />
     </Shell>
   );
