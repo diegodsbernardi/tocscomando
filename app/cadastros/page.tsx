@@ -9,10 +9,22 @@ import { MotoboyForm } from "@/components/MotoboyForm";
 import { MotoboyListItem } from "@/components/MotoboyListItem";
 import { AreaForm } from "@/components/AreaForm";
 import { AreaListItem } from "@/components/AreaListItem";
+import { UserProfileRow, type Drawer as TeamDrawer } from "@/components/cadastros/UserProfileRow";
+import { getCurrentProfile, roleLabel } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
-type Tab = "func" | "moto" | "bairro";
+type Tab = "func" | "moto" | "bairro" | "equipe";
+
+type TeamMember = {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: "admin" | "operator";
+  default_drawer_id: string | null;
+  default_drawer_name: string | null;
+  created_at: string;
+};
 
 type Employee = {
   id: string;
@@ -33,7 +45,28 @@ export default async function CadastrosPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const tab: Tab = searchParams.tab === "moto" || searchParams.tab === "bairro" ? searchParams.tab : "func";
+  const profile = await getCurrentProfile();
+  const isAdmin = profile?.role === "admin";
+
+  const requested = searchParams.tab;
+  const tab: Tab =
+    requested === "moto" || requested === "bairro"
+      ? requested
+      : requested === "equipe" && isAdmin
+        ? "equipe"
+        : "func";
+
+  // Carrega membros da equipe (RPC team_members) apenas se admin
+  let teamMembers: TeamMember[] = [];
+  let drawersForTeam: TeamDrawer[] = [];
+  if (isAdmin) {
+    const [{ data: tm }, { data: dr }] = await Promise.all([
+      supabase.rpc("team_members"),
+      supabase.from("cash_drawers").select("id, name").eq("active", true).order("name"),
+    ]);
+    teamMembers = (tm || []) as TeamMember[];
+    drawersForTeam = (dr || []) as TeamDrawer[];
+  }
 
   const [{ data: emps }, { data: motos }, { data: areas }] = await Promise.all([
     supabase
@@ -60,22 +93,67 @@ export default async function CadastrosPage({
 
   return (
     <Shell>
-      <TopBar title="Cadastros" subtitle="a base que alimenta o app" />
+      <TopBar
+        title="Cadastros"
+        subtitle="a base que alimenta o app"
+        role={roleLabel(profile)}
+      />
 
       <div className="px-4">
-        <div className="flex gap-2 reveal d2">
+        <div className="flex gap-2 reveal d2 overflow-x-auto">
           <TabLink href="?tab=func" label="Funcionários" active={tab === "func"} />
           <TabLink href="?tab=moto" label="Motoboys" active={tab === "moto"} />
           <TabLink href="?tab=bairro" label="Bairros" active={tab === "bairro"} />
+          {isAdmin && <TabLink href="?tab=equipe" label="Equipe" active={tab === "equipe"} />}
         </div>
 
         <div className="mt-4 reveal d3">
           {tab === "func" && <FuncionariosPane list={empList} />}
           {tab === "moto" && <MotoboysPane list={motoList} />}
           {tab === "bairro" && <BairrosPane list={areaList} />}
+          {tab === "equipe" && isAdmin && (
+            <EquipePane members={teamMembers} drawers={drawersForTeam} currentUserId={profile!.user_id} />
+          )}
         </div>
       </div>
     </Shell>
+  );
+}
+
+function EquipePane({
+  members,
+  drawers,
+  currentUserId,
+}: {
+  members: TeamMember[];
+  drawers: TeamDrawer[];
+  currentUserId: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="px-1 text-[13px] leading-snug text-muted">
+        Quem usa o app. <b className="text-navy">Admin</b> vê tudo. <b className="text-navy">Operador</b> com caixa
+        atribuído só vê o caixa dele.
+      </p>
+      {members.length === 0 ? (
+        <p className="rounded-card bg-white p-6 text-center text-sm text-muted shadow-card">
+          Ninguém cadastrado ainda. Quando alguém logar pela primeira vez, aparece aqui.
+        </p>
+      ) : (
+        members.map((m) => (
+          <UserProfileRow
+            key={m.user_id}
+            userId={m.user_id}
+            email={m.email}
+            initialName={m.display_name}
+            initialRole={m.role}
+            initialDrawerId={m.default_drawer_id}
+            isSelf={m.user_id === currentUserId}
+            drawers={drawers}
+          />
+        ))
+      )}
+    </div>
   );
 }
 

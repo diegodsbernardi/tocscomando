@@ -7,6 +7,7 @@ import { CashMovementForm } from "@/components/CashMovementForm";
 import { CashMovementList, type Movement } from "@/components/CashMovementList";
 import { ReopenButton, DeleteSessionButton } from "@/components/CashSessionActions";
 import { brl } from "@/lib/format";
+import { getCurrentProfile, visibleDrawerFilter, roleLabel } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -48,14 +49,25 @@ export default async function CaixaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const profile = await getCurrentProfile();
+  const scopedDrawerId = visibleDrawerFilter(profile);
+
+  let drawersQuery = supabase.from("cash_drawers").select("id, name").eq("active", true).order("name");
+  let sessionsQuery = supabase
+    .from("cash_sessions")
+    .select("id, drawer_id, work_date, opened_at, opening_amount, closed_at, closing_amount, expected_amount, notes, status")
+    .order("work_date", { ascending: false })
+    .order("opened_at", { ascending: false })
+    .limit(40);
+
+  if (scopedDrawerId) {
+    drawersQuery = drawersQuery.eq("id", scopedDrawerId);
+    sessionsQuery = sessionsQuery.eq("drawer_id", scopedDrawerId);
+  }
+
   const [{ data: drawersData }, { data: sessionsData }] = await Promise.all([
-    supabase.from("cash_drawers").select("id, name").eq("active", true).order("name"),
-    supabase
-      .from("cash_sessions")
-      .select("id, drawer_id, work_date, opened_at, opening_amount, closed_at, closing_amount, expected_amount, notes, status")
-      .order("work_date", { ascending: false })
-      .order("opened_at", { ascending: false })
-      .limit(40),
+    drawersQuery,
+    sessionsQuery,
   ]);
 
   const drawers = (drawersData || []) as Drawer[];
@@ -96,6 +108,7 @@ export default async function CaixaPage() {
           day: "2-digit",
           month: "long",
         })}
+        role={roleLabel(profile)}
       />
 
       <div className="px-4">

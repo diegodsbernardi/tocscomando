@@ -6,6 +6,7 @@ import { brl } from "@/lib/format";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { Logo } from "@/components/ui/Logo";
 import { CloseDayFinishButton } from "@/components/CloseDayFinishButton";
+import { getCurrentProfile, roleLabel, visibleDrawerFilter } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -75,8 +76,17 @@ export default async function FecharODiaPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const profile = await getCurrentProfile();
+  const scopedDrawerId = visibleDrawerFilter(profile);
+
   const stepIdx = Math.max(0, Math.min(4, parseInt(searchParams.passo || "0", 10) || 0));
   const today = todayISO();
+
+  let sessionsQuery = supabase
+    .from("cash_sessions")
+    .select("id, drawer_id, opening_amount, closing_amount, expected_amount, status, cash_drawers(name)")
+    .eq("work_date", today);
+  if (scopedDrawerId) sessionsQuery = sessionsQuery.eq("drawer_id", scopedDrawerId);
 
   // Carrega tudo em paralelo
   const [
@@ -93,10 +103,7 @@ export default async function FecharODiaPage({
       .from("extra_payments")
       .select("id, amount, paid, employees(name, centro_custo)")
       .eq("work_date", today),
-    supabase
-      .from("cash_sessions")
-      .select("id, drawer_id, opening_amount, closing_amount, expected_amount, status, cash_drawers(name)")
-      .eq("work_date", today),
+    sessionsQuery,
     supabase
       .from("reports")
       .select("id, credito, debito, pix, total, created_at")
@@ -152,6 +159,11 @@ export default async function FecharODiaPage({
               })}
             </small>
           </div>
+          {roleLabel(profile) && (
+            <span className="rounded-full bg-navy px-3 py-[5px] text-[11px] font-bold text-white">
+              {roleLabel(profile)}
+            </span>
+          )}
           <Link
             href="/"
             aria-label="Sair do wizard"

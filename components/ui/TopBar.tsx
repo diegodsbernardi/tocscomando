@@ -5,14 +5,10 @@ type Props = {
   title?: string;
   subtitle?: string;
   greeting?: { hour: string; name: string };
-  role?: "delivery" | "salao" | null;
+  /** Label visível no badge (ex: "Delivery", "Salão", "Admin"). null = sem badge. */
+  role?: string | null;
   rightSlot?: React.ReactNode;
   backHref?: string;
-};
-
-const ROLE_LABEL: Record<NonNullable<Props["role"]>, string> = {
-  delivery: "Delivery",
-  salao: "Salão",
 };
 
 export function TopBar({
@@ -73,7 +69,7 @@ export function TopBar({
 
       {role && (
         <span className="rounded-full bg-navy px-3 py-[5px] text-[11px] font-bold text-white">
-          {ROLE_LABEL[role]}
+          {role}
         </span>
       )}
 
