@@ -10,16 +10,22 @@ export function CashCloseForm({
   inflows,
   outflows,
   action,
+  suggestedCashSales,
+  saiposCapturedAt,
 }: {
   sessionId: string;
   openingAmount: number;
   inflows: number;
   outflows: number;
   action: (formData: FormData) => Promise<{ ok: boolean; error?: string } | void>;
+  suggestedCashSales?: number | null;
+  saiposCapturedAt?: string | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [vendas, setVendas] = useState<string>("");
+  const [vendas, setVendas] = useState<string>(
+    suggestedCashSales != null ? String(suggestedCashSales) : "",
+  );
   const [closingPreview, setClosingPreview] = useState<number>(0);
 
   const vendasNum = Number(vendas || 0);
@@ -61,7 +67,14 @@ export function CashCloseForm({
         <Row label="+ Entradas (reforços)" value={inflows} color="text-ok" />
         <Row label="− Saídas (sangrias)" value={outflows} color="text-danger" />
         <label className="flex items-center justify-between gap-3 pt-2">
-          <span className="text-muted">+ Vendas em dinheiro</span>
+          <span className="text-muted">
+            + Vendas em dinheiro
+            {suggestedCashSales != null && saiposCapturedAt && (
+              <span className="ml-1.5 rounded-full bg-cyan/15 px-1.5 py-0.5 text-[10px] font-bold text-cyan">
+                Saipos {new Date(saiposCapturedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </span>
           <input
             type="number"
             step="0.01"
@@ -77,7 +90,9 @@ export function CashCloseForm({
           <span className="font-display text-lg font-bold tabular-nums">{brl(expected)}</span>
         </div>
         <p className="text-[11px] text-muted">
-          Vendas vêm do Saipos (por enquanto, lança manual).
+          {suggestedCashSales != null
+            ? "Valor sugerido pelo Saipos. Edita se precisar."
+            : "Sem snapshot do Saipos ainda — lança manual."}
         </p>
       </div>
 

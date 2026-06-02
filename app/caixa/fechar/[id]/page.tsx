@@ -4,6 +4,7 @@ import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
 import { CashCloseForm } from "@/components/CashCloseForm";
 import { closeSession } from "../../actions";
+import { getLatestSaiposSnapshot } from "@/lib/saipos";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,12 @@ export default async function FecharCaixaPage({
     .filter((m) => m.direction === "out")
     .reduce((s, m) => s + Number(m.amount), 0);
 
+  // Tenta puxar snapshot do Saipos pra esse caixa específico, fallback no consolidado
+  const drawerSnapshot = await getLatestSaiposSnapshot(drawerNameRaw);
+  const fallbackSnapshot = drawerSnapshot ?? (await getLatestSaiposSnapshot(null));
+  const suggestedCashSales = fallbackSnapshot?.cash_sales ?? null;
+  const saiposCapturedAt = fallbackSnapshot?.captured_at ?? null;
+
   return (
     <Shell>
       <TopBar title="Fechar caixa" subtitle={drawerName} backHref="/caixa" />
@@ -60,6 +67,8 @@ export default async function FecharCaixaPage({
           inflows={ins}
           outflows={outs}
           action={closeSession}
+          suggestedCashSales={suggestedCashSales}
+          saiposCapturedAt={saiposCapturedAt}
         />
       </div>
     </Shell>
