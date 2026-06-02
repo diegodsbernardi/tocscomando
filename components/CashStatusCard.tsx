@@ -42,32 +42,32 @@ export async function CashStatusCard() {
       className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-md"
     >
       <div className="flex items-baseline justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
           Caixas
         </span>
-        <span className="text-xs text-slate-400">ver →</span>
+        <span className="text-xs text-muted">ver →</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
         {drawers.map((d) => {
           const open = openByDrawer.get(d.id);
           return (
             <div key={d.id}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
                 {d.name}
               </p>
               {open ? (
                 <>
-                  <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-700">
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-ok">
                     {brl(open.opening_amount)}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-muted">
                     aberto {timeBR(open.opened_at)}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="mt-0.5 text-xl font-bold text-slate-400">—</p>
-                  <p className="text-[11px] text-slate-500">fechado</p>
+                  <p className="mt-0.5 text-xl font-bold text-muted">—</p>
+                  <p className="text-[11px] text-muted">fechado</p>
                 </>
               )}
             </div>

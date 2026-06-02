@@ -61,26 +61,26 @@ export default async function HistoricoPage() {
       <div className="px-4">
 
       <section className="mb-6 mt-2 space-y-2 rounded-2xl bg-white p-5 shadow">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
           Totais do dia
         </h2>
         <Row label="Crédito" value={totals.credito} />
         <Row label="Débito" value={totals.debito} />
         <Row label="Pix" value={totals.pix} />
-        <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-          <span className="font-semibold text-slate-700">Total</span>
-          <span className="text-xl font-bold text-brand-dark">
+        <div className="flex items-center justify-between border-t border-line pt-3">
+          <span className="font-semibold text-navy">Total</span>
+          <span className="text-xl font-bold text-cyan">
             {brl(totals.total)}
           </span>
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
           Cupons de hoje ({list.length})
         </h2>
         {list.length === 0 && (
-          <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow">
+          <p className="rounded-2xl bg-white p-6 text-center text-sm text-muted shadow">
             Nenhum relatório enviado hoje ainda.
           </p>
         )}
@@ -91,19 +91,19 @@ export default async function HistoricoPage() {
           >
             <div className="mb-2 flex items-start justify-between gap-3">
               <div className="flex flex-col">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted">
                   {new Date(r.created_at).toLocaleTimeString("pt-BR", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="text-base font-bold tabular-nums text-brand-dark">
+                <span className="text-base font-bold tabular-nums text-cyan">
                   {brl(Number(r.total))}
                 </span>
               </div>
               <DeleteReportButton id={r.id} />
             </div>
-            <div className="flex justify-between text-sm tabular-nums text-slate-600">
+            <div className="flex justify-between text-sm tabular-nums text-muted">
               <span>Crédito {brl(Number(r.credito))}</span>
               <span>Débito {brl(Number(r.debito))}</span>
               <span>Pix {brl(Number(r.pix))}</span>
@@ -118,7 +118,7 @@ export default async function HistoricoPage() {
 
 function Row({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between text-slate-700">
+    <div className="flex items-center justify-between text-navy">
       <span>{label}</span>
       <span className="font-medium">{brl(value)}</span>
     </div>

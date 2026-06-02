@@ -41,10 +41,10 @@ export function AreaListItem({
 
   return (
     <article
-      className={`flex items-center justify-between gap-2 rounded-2xl p-3 shadow ${active ? "bg-white" : "bg-slate-100"}`}
+      className={`flex items-center justify-between gap-2 rounded-2xl p-3 shadow ${active ? "bg-white" : "bg-line"}`}
     >
       <p
-        className={`min-w-0 flex-1 truncate text-sm font-semibold ${active ? "text-slate-800" : "text-slate-500 line-through"}`}
+        className={`min-w-0 flex-1 truncate text-sm font-semibold ${active ? "text-navy" : "text-muted line-through"}`}
       >
         {name}
       </p>
@@ -56,12 +56,12 @@ export function AreaListItem({
             min={0}
             value={fee}
             onChange={(e) => setFee(e.target.value)}
-            className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm tabular-nums"
+            className="w-16 rounded-lg border border-line px-2 py-1 text-sm tabular-nums"
           />
           <button
             onClick={saveFee}
             disabled={isPending}
-            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+            className="rounded-lg bg-cyan px-2 py-1 text-xs font-semibold text-white hover:bg-cyan-deep disabled:opacity-50"
           >
             ✓
           </button>
@@ -70,7 +70,7 @@ export function AreaListItem({
               setFee(String(initialFee));
               setEditing(false);
             }}
-            className="rounded-lg bg-slate-200 px-2 py-1 text-xs"
+            className="rounded-lg bg-line px-2 py-1 text-xs"
           >
             ✕
           </button>
@@ -78,7 +78,7 @@ export function AreaListItem({
       ) : (
         <button
           onClick={() => setEditing(true)}
-          className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold tabular-nums text-slate-700 hover:bg-slate-200"
+          className="rounded-lg bg-line px-2 py-1 text-xs font-semibold tabular-nums text-navy hover:bg-line"
         >
           R$ {Number(initialFee).toFixed(2).replace(".", ",")}
         </button>
@@ -88,8 +88,8 @@ export function AreaListItem({
         disabled={isPending}
         className={`rounded-lg px-2 py-1 text-xs font-semibold disabled:opacity-50 ${
           active
-            ? "bg-red-100 text-red-700 hover:bg-red-200"
-            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+            ? "bg-danger-bg text-danger hover:bg-danger-bg"
+            : "bg-ok-bg text-ok hover:bg-ok-bg"
         }`}
       >
         {active ? "−" : "+"}

@@ -29,13 +29,13 @@ export function EmployeeForm() {
         name="name"
         required
         placeholder="Nome do funcionário"
-        className="col-span-3 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-3 rounded-lg border border-line px-3 py-2 text-sm"
       />
       <select
         name="centro_custo"
         required
         defaultValue="atendimento"
-        className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-2 rounded-lg border border-line px-3 py-2 text-sm"
       >
         <option value="atendimento">Atendimento</option>
         <option value="cozinha">Cozinha</option>
@@ -43,11 +43,11 @@ export function EmployeeForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-1 rounded-lg bg-brand text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+        className="col-span-1 rounded-lg bg-cyan text-sm font-semibold text-white hover:bg-cyan-deep disabled:opacity-50"
       >
         {submitting ? "..." : "Add"}
       </button>
-      {error && <p className="col-span-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="col-span-3 text-sm text-danger">{error}</p>}
     </form>
   );
 }

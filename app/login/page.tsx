@@ -40,13 +40,13 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-5 rounded-2xl bg-white p-8 shadow-lg"
       >
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900">TOCS</h1>
-          <p className="text-sm text-slate-500">Leitor de relatórios Safrapay</p>
+          <h1 className="text-2xl font-bold text-navy">TOCS</h1>
+          <p className="text-sm text-muted">Leitor de relatórios Safrapay</p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-navy">
               Email
             </label>
             <input
@@ -54,12 +54,12 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand"
+              className="w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-cyan"
               autoComplete="email"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-navy">
               Senha
             </label>
             <input
@@ -67,14 +67,14 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand"
+              className="w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-cyan"
               autoComplete="current-password"
             />
           </div>
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
@@ -82,7 +82,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-brand px-4 py-3 font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+          className="w-full rounded-lg bg-cyan px-4 py-3 font-semibold text-white hover:bg-cyan-deep disabled:opacity-50"
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>
@@ -90,7 +90,7 @@ export default function LoginPage() {
         <div className="text-center">
           <Link
             href="/status"
-            className="text-xs text-slate-500 hover:text-slate-700 hover:underline"
+            className="text-xs text-muted hover:text-navy hover:underline"
           >
             Ver status do sistema
           </Link>

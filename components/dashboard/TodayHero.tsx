@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { brl, brlSplit } from "@/lib/format";
-
-const META_DIA = 8000; // meta de faturamento diária (provisória, depois vira config)
+import { getDailyRevenueGoal } from "@/lib/settings";
 
 function startOfDayISO() {
   const d = new Date();
@@ -11,9 +10,12 @@ function startOfDayISO() {
 
 export async function TodayHero() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    metaDia,
+  ] = await Promise.all([supabase.auth.getUser(), getDailyRevenueGoal()]);
   if (!user) return null;
 
   const { data } = await supabase
@@ -35,7 +37,7 @@ export async function TodayHero() {
   );
 
   const split = brlSplit(totals.total);
-  const pct = Math.min(100, Math.round((totals.total / META_DIA) * 100));
+  const pct = Math.min(100, Math.round((totals.total / metaDia) * 100));
 
   return (
     <section
@@ -64,7 +66,7 @@ export async function TodayHero() {
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-center justify-between text-xs opacity-90">
-          <span>Meta do dia · {brl(META_DIA)}</span>
+          <span>Meta do dia · {brl(metaDia)}</span>
           <span>{pct}%</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white/25">

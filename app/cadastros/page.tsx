@@ -10,7 +10,9 @@ import { MotoboyListItem } from "@/components/MotoboyListItem";
 import { AreaForm } from "@/components/AreaForm";
 import { AreaListItem } from "@/components/AreaListItem";
 import { UserProfileRow, type Drawer as TeamDrawer } from "@/components/cadastros/UserProfileRow";
-import { getCurrentProfile, roleLabel } from "@/lib/profile";
+import { DailyGoalEditor } from "@/components/cadastros/DailyGoalEditor";
+import { canSeeMotoboys, getCurrentProfile, roleLabel } from "@/lib/profile";
+import { getDailyRevenueGoal } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -47,25 +49,27 @@ export default async function CadastrosPage({
 
   const profile = await getCurrentProfile();
   const isAdmin = profile?.role === "admin";
+  const showDeliveryTabs = canSeeMotoboys(profile);
 
   const requested = searchParams.tab;
-  const tab: Tab =
-    requested === "moto" || requested === "bairro"
-      ? requested
-      : requested === "equipe" && isAdmin
-        ? "equipe"
-        : "func";
+  let tab: Tab = "func";
+  if (requested === "moto" && showDeliveryTabs) tab = "moto";
+  else if (requested === "bairro" && showDeliveryTabs) tab = "bairro";
+  else if (requested === "equipe" && isAdmin) tab = "equipe";
 
-  // Carrega membros da equipe (RPC team_members) apenas se admin
+  // Carrega membros da equipe (RPC team_members) e meta apenas se admin
   let teamMembers: TeamMember[] = [];
   let drawersForTeam: TeamDrawer[] = [];
+  let dailyGoal = 8000;
   if (isAdmin) {
-    const [{ data: tm }, { data: dr }] = await Promise.all([
+    const [{ data: tm }, { data: dr }, goal] = await Promise.all([
       supabase.rpc("team_members"),
       supabase.from("cash_drawers").select("id, name").eq("active", true).order("name"),
+      getDailyRevenueGoal(),
     ]);
     teamMembers = (tm || []) as TeamMember[];
     drawersForTeam = (dr || []) as TeamDrawer[];
+    dailyGoal = goal;
   }
 
   const [{ data: emps }, { data: motos }, { data: areas }] = await Promise.all([
@@ -102,8 +106,12 @@ export default async function CadastrosPage({
       <div className="px-4">
         <div className="flex gap-2 reveal d2 overflow-x-auto">
           <TabLink href="?tab=func" label="Funcionários" active={tab === "func"} />
-          <TabLink href="?tab=moto" label="Motoboys" active={tab === "moto"} />
-          <TabLink href="?tab=bairro" label="Bairros" active={tab === "bairro"} />
+          {showDeliveryTabs && (
+            <>
+              <TabLink href="?tab=moto" label="Motoboys" active={tab === "moto"} />
+              <TabLink href="?tab=bairro" label="Bairros" active={tab === "bairro"} />
+            </>
+          )}
           {isAdmin && <TabLink href="?tab=equipe" label="Equipe" active={tab === "equipe"} />}
         </div>
 
@@ -112,7 +120,12 @@ export default async function CadastrosPage({
           {tab === "moto" && <MotoboysPane list={motoList} />}
           {tab === "bairro" && <BairrosPane list={areaList} />}
           {tab === "equipe" && isAdmin && (
-            <EquipePane members={teamMembers} drawers={drawersForTeam} currentUserId={profile!.user_id} />
+            <EquipePane
+              members={teamMembers}
+              drawers={drawersForTeam}
+              currentUserId={profile!.user_id}
+              dailyGoal={dailyGoal}
+            />
           )}
         </div>
       </div>
@@ -124,14 +137,17 @@ function EquipePane({
   members,
   drawers,
   currentUserId,
+  dailyGoal,
 }: {
   members: TeamMember[];
   drawers: TeamDrawer[];
   currentUserId: string;
+  dailyGoal: number;
 }) {
   return (
     <div className="space-y-3">
-      <p className="px-1 text-[13px] leading-snug text-muted">
+      <DailyGoalEditor initialGoal={dailyGoal} />
+      <p className="px-1 pt-2 text-[13px] leading-snug text-muted">
         Quem usa o app. <b className="text-navy">Admin</b> vê tudo. <b className="text-navy">Operador</b> com caixa
         atribuído só vê o caixa dele.
       </p>

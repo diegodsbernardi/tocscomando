@@ -19,7 +19,7 @@ export function ReopenButton({ id }: { id: string }) {
     <button
       onClick={onClick}
       disabled={isPending}
-      className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 disabled:opacity-50"
+      className="rounded-lg bg-warn-bg px-3 py-1.5 text-xs font-semibold text-warn hover:bg-warn-bg disabled:opacity-50"
     >
       {isPending ? "..." : "Reabrir"}
     </button>
@@ -43,7 +43,7 @@ export function DeleteSessionButton({ id }: { id: string }) {
       onClick={onClick}
       disabled={isPending}
       aria-label="Apagar sessão"
-      className="rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+      className="rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50"
     >
       {isPending ? "..." : "✕"}
     </button>

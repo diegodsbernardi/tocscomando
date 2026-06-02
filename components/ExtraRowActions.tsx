@@ -20,8 +20,8 @@ export function MarkPaidToggle({ id, paid }: { id: string; paid: boolean }) {
       disabled={isPending}
       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
         paid
-          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-          : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+          ? "bg-ok-bg text-ok hover:bg-ok-bg"
+          : "bg-warn-bg text-warn hover:bg-warn-bg"
       }`}
     >
       {isPending ? "..." : paid ? "Pago" : "Pagar"}
@@ -46,7 +46,7 @@ export function DeleteExtraButton({ id }: { id: string }) {
       onClick={handleClick}
       disabled={isPending}
       aria-label="Apagar extra"
-      className="rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+      className="rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50"
     >
       {isPending ? "..." : "✕"}
     </button>

@@ -5,6 +5,7 @@ import { DeleteShiftButton } from "@/components/MotoboyShiftActions";
 import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
 import { formatDateBR } from "@/lib/week";
+import { canSeeMotoboys, getCurrentProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export default async function TurnoDetalhePage({
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const profile = await getCurrentProfile();
+  if (!canSeeMotoboys(profile)) redirect("/");
 
   const [{ data: shift }, { data: areas }, { data: rides }] = await Promise.all([
     supabase

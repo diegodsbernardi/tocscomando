@@ -88,7 +88,7 @@ export function ShiftRideEditor({
   return (
     <div className="space-y-4">
       {/* Total */}
-      <section className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-lg">
+      <section className="rounded-2xl bg-cyan-hero p-5 text-white shadow-glow">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-white/80">
             Total
@@ -99,7 +99,7 @@ export function ShiftRideEditor({
         </div>
         <p className="mt-1 text-3xl font-bold tabular-nums">{brl(effective)}</p>
         {belowMin && (
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-amber-200">
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brandyellow">
             Abaixo do mínimo. Corridas: {brl(total)} · Mínimo: {brl(MIN_DAILY_PAYMENT)}
           </p>
         )}
@@ -111,13 +111,13 @@ export function ShiftRideEditor({
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filtrar bairro…"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-line px-3 py-2 text-sm"
       />
 
       {/* Lista de bairros */}
       <div className="space-y-1 rounded-2xl bg-white p-2 shadow">
         {filteredAreas.length === 0 && (
-          <p className="py-6 text-center text-sm text-slate-500">Nenhum bairro encontrado.</p>
+          <p className="py-6 text-center text-sm text-muted">Nenhum bairro encontrado.</p>
         )}
         {filteredAreas.map((a) => {
           const c = counts[a.id] || 0;
@@ -126,18 +126,18 @@ export function ShiftRideEditor({
           return (
             <div
               key={a.id}
-              className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${c > 0 ? "bg-brand/5" : ""}`}
+              className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${c > 0 ? "bg-cyan/5" : ""}`}
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-800">{a.name}</p>
-                <p className="text-[11px] text-slate-500 tabular-nums">{brl(Number(a.fee))}</p>
+                <p className="truncate text-sm font-medium text-navy">{a.name}</p>
+                <p className="text-[11px] text-muted tabular-nums">{brl(Number(a.fee))}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => changeBy(a.id, -1)}
                   disabled={c === 0}
-                  className="h-8 w-8 rounded-lg bg-slate-100 text-base text-slate-700 hover:bg-slate-200 disabled:opacity-30"
+                  className="h-8 w-8 rounded-lg bg-line text-base text-navy hover:bg-line disabled:opacity-30"
                   aria-label={`Diminuir ${a.name}`}
                 >
                   −
@@ -149,22 +149,22 @@ export function ShiftRideEditor({
                   inputMode="numeric"
                   value={c}
                   onChange={(e) => setRaw(a.id, e.target.value)}
-                  className="w-12 rounded-lg border border-slate-300 px-1 py-1 text-center text-sm tabular-nums"
+                  className="w-12 rounded-lg border border-line px-1 py-1 text-center text-sm tabular-nums"
                 />
                 <button
                   type="button"
                   onClick={() => changeBy(a.id, +1)}
-                  className="h-8 w-8 rounded-lg bg-brand text-base font-bold text-white hover:bg-brand-dark"
+                  className="h-8 w-8 rounded-lg bg-cyan text-base font-bold text-white hover:bg-cyan-deep"
                   aria-label={`Adicionar ${a.name}`}
                 >
                   +
                 </button>
               </div>
               <span
-                className={`w-16 text-right text-sm tabular-nums ${c > 0 ? "font-semibold text-slate-800" : "text-slate-400"}`}
+                className={`w-16 text-right text-sm tabular-nums ${c > 0 ? "font-semibold text-navy" : "text-muted"}`}
               >
                 {brl(sub)}
-                {isSaving && <span className="ml-1 text-[10px] text-slate-400">…</span>}
+                {isSaving && <span className="ml-1 text-[10px] text-muted">…</span>}
               </span>
             </div>
           );

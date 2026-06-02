@@ -42,16 +42,16 @@ export default function StatusPage() {
   }, []);
 
   const banner = (() => {
-    if (fetchError) return { bg: "bg-amber-50", fg: "text-amber-700", txt: "⚠️ Sem conexão" };
-    if (!status) return { bg: "bg-slate-100", fg: "text-slate-500", txt: "Verificando…" };
-    if (status.ok) return { bg: "bg-emerald-50", fg: "text-emerald-700", txt: "✅ Tudo funcionando" };
-    return { bg: "bg-red-50", fg: "text-red-700", txt: "⚠️ Sistema com problema" };
+    if (fetchError) return { bg: "bg-warn-bg", fg: "text-warn", txt: "⚠️ Sem conexão" };
+    if (!status) return { bg: "bg-line", fg: "text-muted", txt: "Verificando…" };
+    if (status.ok) return { bg: "bg-ok-bg", fg: "text-ok", txt: "✅ Tudo funcionando" };
+    return { bg: "bg-danger-bg", fg: "text-danger", txt: "⚠️ Sistema com problema" };
   })();
 
   return (
     <main className="mx-auto max-w-md space-y-4 px-4 py-8">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Status do sistema</h1>
+        <h1 className="text-xl font-bold text-navy">Status do sistema</h1>
         <Link
           href="/"
           className="text-sm font-medium text-sky-600 hover:underline"
@@ -71,23 +71,23 @@ export default function StatusPage() {
           {status.services.map((s) => (
             <li
               key={s.name}
-              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3"
+              className="flex items-center justify-between rounded-lg border border-line bg-white p-3"
             >
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-slate-900">
+                <div className="text-sm font-medium text-navy">
                   {s.name}
                 </div>
                 {s.error && (
-                  <div className="mt-0.5 break-words text-xs text-red-600">
+                  <div className="mt-0.5 break-words text-xs text-danger">
                     {s.error}
                   </div>
                 )}
               </div>
               <div className="ml-3 flex shrink-0 items-center gap-2">
-                <span className="text-xs text-slate-500">{s.latency_ms}ms</span>
+                <span className="text-xs text-muted">{s.latency_ms}ms</span>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    s.ok ? "bg-emerald-500" : "bg-red-500"
+                    s.ok ? "bg-ok-bg0" : "bg-danger-bg0"
                   }`}
                 />
               </div>
@@ -97,7 +97,7 @@ export default function StatusPage() {
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted">
           {status
             ? `Última verificação: ${new Date(status.checked_at).toLocaleTimeString("pt-BR")}`
             : " "}
@@ -105,14 +105,14 @@ export default function StatusPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          className="rounded-lg border border-line px-3 py-1 text-xs font-medium text-navy hover:bg-line disabled:opacity-50"
         >
           {loading ? "…" : "Atualizar"}
         </button>
       </div>
 
-      <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-        <p className="mb-1 font-medium text-slate-800">Se algo estiver em vermelho:</p>
+      <div className="rounded-lg bg-slate-50 p-3 text-xs text-muted">
+        <p className="mb-1 font-medium text-navy">Se algo estiver em vermelho:</p>
         <p>
           Avise o Diego com um print dessa tela. Enquanto isso, anote os cupons
           no papel e lance aqui quando voltar ao normal.

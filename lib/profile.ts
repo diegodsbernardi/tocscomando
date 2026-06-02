@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { firstName as firstNameOf } from "./format";
 
@@ -18,7 +19,9 @@ export type UserProfile = {
  *
  * Retorna null se não autenticado.
  */
-export async function getCurrentProfile(): Promise<UserProfile | null> {
+export const getCurrentProfile = cache(getCurrentProfileImpl);
+
+async function getCurrentProfileImpl(): Promise<UserProfile | null> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -95,4 +98,18 @@ export function roleLabel(profile: UserProfile | null): string | null {
 export function visibleDrawerFilter(profile: UserProfile | null): string | null {
   if (!profile || profile.role === "admin") return null;
   return profile.default_drawer_id;
+}
+
+/**
+ * Motoboys / Entregas pertencem ao Delivery. Quem pode ver:
+ *  - admin (sempre)
+ *  - operator com drawer Delivery (DLV)
+ *  - operator sem drawer atribuído (default seguro)
+ *  - operator Salão → não vê.
+ */
+export function canSeeMotoboys(profile: UserProfile | null): boolean {
+  if (!profile) return true; // sem profile = não bloqueia
+  if (profile.role === "admin") return true;
+  if (!profile.default_drawer_id) return true;
+  return profile.default_drawer_name !== "LTDA";
 }

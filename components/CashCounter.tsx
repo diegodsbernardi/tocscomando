@@ -70,8 +70,8 @@ export function CashCounter({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-lg bg-slate-100 p-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+      <div className="flex items-center justify-between rounded-lg bg-line p-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-navy">
           <input
             type="checkbox"
             checked={useCounter}
@@ -84,7 +84,7 @@ export function CashCounter({
 
       {useCounter ? (
         <div className="rounded-2xl bg-white p-3 shadow-inner">
-          <div className="grid grid-cols-1 divide-y divide-slate-100">
+          <div className="grid grid-cols-1 divide-y divide-line">
             {DENOMS.map((d) => {
               const q = counts[String(d.v)] || 0;
               const sub = d.v * q;
@@ -93,10 +93,10 @@ export function CashCounter({
                   key={d.v}
                   className="flex items-center justify-between gap-2 py-1.5"
                 >
-                  <span className="w-20 text-sm font-medium text-slate-700">
+                  <span className="w-20 text-sm font-medium text-navy">
                     {d.label}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                  <span className="text-[10px] uppercase tracking-wider text-muted">
                     {d.kind}
                   </span>
                   <div className="flex items-center gap-1">
@@ -105,7 +105,7 @@ export function CashCounter({
                       onClick={() =>
                         setCounts({ ...counts, [String(d.v)]: Math.max(0, q - 1) })
                       }
-                      className="h-7 w-7 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      className="h-7 w-7 rounded-lg bg-line text-navy hover:bg-line"
                     >
                       −
                     </button>
@@ -121,24 +121,24 @@ export function CashCounter({
                           [String(d.v)]: Math.max(0, parseInt(e.target.value || "0", 10) || 0),
                         })
                       }
-                      className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm tabular-nums"
+                      className="w-14 rounded-lg border border-line px-2 py-1 text-center text-sm tabular-nums"
                     />
                     <button
                       type="button"
                       onClick={() => setCounts({ ...counts, [String(d.v)]: q + 1 })}
-                      className="h-7 w-7 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      className="h-7 w-7 rounded-lg bg-line text-navy hover:bg-line"
                     >
                       +
                     </button>
                   </div>
-                  <span className="w-20 text-right text-sm tabular-nums text-slate-700">
+                  <span className="w-20 text-right text-sm tabular-nums text-navy">
                     {brl(sub)}
                   </span>
                 </div>
               );
             })}
           </div>
-          <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-base font-semibold text-brand-dark">
+          <div className="mt-2 flex items-center justify-between border-t border-line pt-2 text-base font-semibold text-cyan">
             <span>Total contado</span>
             <span className="tabular-nums">{brl(counterTotal)}</span>
           </div>
@@ -152,7 +152,7 @@ export function CashCounter({
           placeholder="0,00"
           value={manualAmount}
           onChange={(e) => setManualAmount(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-3 text-lg font-semibold tabular-nums"
+          className="w-full rounded-lg border border-line px-3 py-3 text-lg font-semibold tabular-nums"
         />
       )}
 

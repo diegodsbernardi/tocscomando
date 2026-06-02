@@ -72,14 +72,15 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav() {
+export function BottomNav({ hideMotoboys = false }: { hideMotoboys?: boolean } = {}) {
   const pathname = usePathname() || "/";
+  const items = hideMotoboys ? ITEMS.filter((it) => it.href !== "/motoboys") : ITEMS;
   return (
     <nav
       aria-label="Navegação principal"
       className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-line bg-white/95 px-2 pb-[14px] pt-[10px] backdrop-blur"
     >
-      {ITEMS.map((it) => {
+      {items.map((it) => {
         const active = it.match(pathname);
         return (
           <Link

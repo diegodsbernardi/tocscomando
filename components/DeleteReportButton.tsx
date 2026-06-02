@@ -29,7 +29,7 @@ export function DeleteReportButton({ id }: { id: string }) {
         onClick={handleClick}
         disabled={isPending}
         aria-label="Apagar relatório"
-        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-danger hover:bg-danger-bg disabled:opacity-50"
       >
         {isPending ? (
           <>
@@ -56,7 +56,7 @@ export function DeleteReportButton({ id }: { id: string }) {
           </>
         )}
       </button>
-      {error && <p className="mt-1 text-[10px] text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-[10px] text-danger">{error}</p>}
     </div>
   );
 }

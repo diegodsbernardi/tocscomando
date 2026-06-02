@@ -42,29 +42,29 @@ export async function MotoboysTodayCard() {
       className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-md"
     >
       <div className="flex items-baseline justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
           Delivery hoje
         </span>
-        <span className="text-xs text-slate-400">ver →</span>
+        <span className="text-xs text-muted">ver →</span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Motoboys
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">{shifts.length}</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">{shifts.length}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Corridas
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">{totalRides}</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">{totalRides}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Total
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">{brl(totalDue)}</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">{brl(totalDue)}</p>
         </div>
       </div>
     </Link>

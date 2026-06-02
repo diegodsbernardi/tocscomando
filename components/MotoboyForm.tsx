@@ -29,22 +29,22 @@ export function MotoboyForm() {
         name="name"
         required
         placeholder="Nome"
-        className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-2 rounded-lg border border-line px-3 py-2 text-sm"
       />
       <input
         type="tel"
         name="phone"
         placeholder="Telefone"
-        className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-2 rounded-lg border border-line px-3 py-2 text-sm"
       />
       <button
         type="submit"
         disabled={submitting}
-        className="row-span-2 rounded-lg bg-brand text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+        className="row-span-2 rounded-lg bg-cyan text-sm font-semibold text-white hover:bg-cyan-deep disabled:opacity-50"
       >
         {submitting ? "..." : "Add"}
       </button>
-      {error && <p className="col-span-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="col-span-3 text-sm text-danger">{error}</p>}
     </form>
   );
 }

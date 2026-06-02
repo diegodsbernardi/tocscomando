@@ -4,6 +4,7 @@ import { NewShiftForm } from "@/components/NewShiftForm";
 import { createShift } from "../../actions";
 import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
+import { canSeeMotoboys, getCurrentProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export default async function NovoTurnoPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const profile = await getCurrentProfile();
+  if (!canSeeMotoboys(profile)) redirect("/");
 
   const { data: motoboys } = await supabase
     .from("motoboys")

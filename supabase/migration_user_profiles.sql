@@ -100,3 +100,39 @@ $$;
 
 revoke all on function public.team_members() from public, anon;
 grant execute on function public.team_members() to authenticated;
+
+-- =====================================================
+-- App settings (chave/valor) — começa com meta diária
+-- =====================================================
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.app_settings (key, value)
+values ('revenue_goal_daily', '8000'::jsonb)
+on conflict (key) do nothing;
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "app_settings_read_all" on public.app_settings;
+create policy "app_settings_read_all"
+  on public.app_settings for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "app_settings_write_admin" on public.app_settings;
+create policy "app_settings_write_admin"
+  on public.app_settings for all
+  using (
+    exists (
+      select 1 from public.user_profiles up
+      where up.user_id = auth.uid() and up.role = 'admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.user_profiles up
+      where up.user_id = auth.uid() and up.role = 'admin'
+    )
+  );

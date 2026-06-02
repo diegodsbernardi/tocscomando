@@ -22,6 +22,7 @@ import {
   endOfTuesdayWeek,
   formatDateBR,
 } from "@/lib/week";
+import { canSeeMotoboys, getCurrentProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,9 @@ export default async function HistoricoEntregasPage({
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const profile = await getCurrentProfile();
+  if (!canSeeMotoboys(profile)) redirect("/");
 
   const period: Period = searchParams.p === "semana" || searchParams.p === "mes" ? searchParams.p : "dia";
   const { start, end, label } = periodRange(period);

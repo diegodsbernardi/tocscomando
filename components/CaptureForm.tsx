@@ -154,7 +154,7 @@ export function CaptureForm() {
         <div className="space-y-4">
           <button
             onClick={pickFile}
-            className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-white py-14 text-slate-600 transition hover:border-brand hover:text-brand active:scale-[0.99]"
+            className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-line bg-white py-14 text-muted transition hover:border-cyan hover:text-brand active:scale-[0.99]"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -176,19 +176,19 @@ export function CaptureForm() {
               />
             </svg>
             <span className="font-semibold">Tirar foto do relatório</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Aponte para o cupom da Safrapay
             </span>
           </button>
           {error && (
             <div
               role="alert"
-              className="space-y-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              className="space-y-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger"
             >
               <p className="break-words">{error}</p>
               <Link
                 href="/status"
-                className="inline-block text-xs font-medium text-red-700 underline hover:text-red-900"
+                className="inline-block text-xs font-medium text-danger underline hover:text-red-900"
               >
                 Ver status do sistema →
               </Link>
@@ -206,8 +206,8 @@ export function CaptureForm() {
               className="mx-auto max-h-64 rounded-lg object-contain"
             />
           )}
-          <div className="flex items-center justify-center gap-2 text-slate-600">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          <div className="flex items-center justify-center gap-2 text-muted">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan border-t-transparent" />
             <span>Lendo valores...</span>
           </div>
         </div>
@@ -216,10 +216,10 @@ export function CaptureForm() {
       {step === "duplicate" && (
         <div
           role="alert"
-          className="space-y-4 rounded-2xl border-2 border-red-200 bg-red-50 p-5"
+          className="space-y-4 rounded-2xl border-2 border-red-200 bg-danger-bg p-5"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-bg text-danger">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
@@ -236,10 +236,10 @@ export function CaptureForm() {
               </svg>
             </div>
             <div>
-              <p className="font-bold uppercase tracking-wide text-red-700">
+              <p className="font-bold uppercase tracking-wide text-danger">
                 Relatório já cadastrado
               </p>
-              <p className="text-xs text-red-600">
+              <p className="text-xs text-danger">
                 Esse cupom já foi enviado anteriormente.
               </p>
             </div>
@@ -254,7 +254,7 @@ export function CaptureForm() {
           )}
 
           {extracted && (
-            <div className="rounded-lg bg-white/70 p-3 text-sm text-slate-700">
+            <div className="rounded-lg bg-white/70 p-3 text-sm text-navy">
               <p className="mb-1 font-medium">Valores lidos:</p>
               <div className="flex justify-between tabular-nums">
                 <span>Crédito {brl(extracted.credito)}</span>
@@ -267,13 +267,13 @@ export function CaptureForm() {
           <div className="flex gap-2">
             <Link
               href="/historico"
-              className="flex-1 rounded-lg border border-red-300 bg-white py-3 text-center font-medium text-red-700 hover:bg-red-100"
+              className="flex-1 rounded-lg border border-line bg-white py-3 text-center font-medium text-navy hover:bg-line"
             >
               Ver relatórios
             </Link>
             <button
               onClick={reset}
-              className="flex-1 rounded-lg bg-red-600 py-3 font-semibold text-white hover:bg-red-700"
+              className="flex-1 rounded-lg bg-danger py-3 font-semibold text-white hover:brightness-90"
             >
               Refazer
             </button>
@@ -291,7 +291,7 @@ export function CaptureForm() {
             />
           )}
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted">
               Confirme os valores antes de salvar:
             </p>
             <Field
@@ -309,9 +309,9 @@ export function CaptureForm() {
               value={extracted.pix}
               onChange={(v) => updateField("pix", v)}
             />
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-              <span className="font-semibold text-slate-700">Total</span>
-              <span className="text-lg font-bold tabular-nums text-brand-dark">
+            <div className="flex items-center justify-between border-t border-line pt-3">
+              <span className="font-semibold text-navy">Total</span>
+              <span className="text-lg font-bold tabular-nums text-cyan">
                 {brl(extracted.credito + extracted.debito + extracted.pix)}
               </span>
             </div>
@@ -319,7 +319,7 @@ export function CaptureForm() {
           {error && (
             <p
               role="alert"
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger"
             >
               {error}
             </p>
@@ -327,13 +327,13 @@ export function CaptureForm() {
           <div className="flex gap-2">
             <button
               onClick={reset}
-              className="flex-1 rounded-lg border border-slate-300 py-3 font-medium text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-line py-3 font-medium text-navy hover:bg-line"
             >
               Refazer
             </button>
             <button
               onClick={save}
-              className="flex-1 rounded-lg bg-brand py-3 font-semibold text-white hover:bg-brand-dark"
+              className="flex-1 rounded-lg bg-cyan py-3 font-semibold text-white hover:bg-cyan-deep"
             >
               Salvar
             </button>
@@ -343,8 +343,8 @@ export function CaptureForm() {
 
       {step === "saving" && (
         <div className="rounded-2xl bg-white p-6 text-center shadow">
-          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-          <p className="mt-3 text-slate-600">Salvando...</p>
+          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-cyan border-t-transparent" />
+          <p className="mt-3 text-muted">Salvando...</p>
         </div>
       )}
 
@@ -366,10 +366,10 @@ export function CaptureForm() {
               />
             </svg>
           </div>
-          <p className="font-semibold text-slate-800">Relatório salvo!</p>
+          <p className="font-semibold text-navy">Relatório salvo!</p>
           <button
             onClick={reset}
-            className="w-full rounded-lg bg-brand py-3 font-semibold text-white hover:bg-brand-dark"
+            className="w-full rounded-lg bg-cyan py-3 font-semibold text-white hover:bg-cyan-deep"
           >
             Novo relatório
           </button>
@@ -390,15 +390,15 @@ function Field({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <label className="font-medium text-slate-700">{label}</label>
+      <label className="font-medium text-navy">{label}</label>
       <div className="flex items-center gap-1">
-        <span className="text-slate-500">R$</span>
+        <span className="text-muted">R$</span>
         <input
           type="text"
           inputMode="decimal"
           value={value.toFixed(2).replace(".", ",")}
           onChange={(e) => onChange(e.target.value)}
-          className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-right tabular-nums outline-none focus:border-brand"
+          className="w-28 rounded-lg border border-line px-3 py-2 text-right tabular-nums outline-none focus:border-cyan"
         />
       </div>
     </div>

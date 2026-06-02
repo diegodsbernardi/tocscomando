@@ -30,13 +30,13 @@ export function NewShiftForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow">
-      <label className="flex flex-col text-sm font-medium text-slate-700">
+      <label className="flex flex-col text-sm font-medium text-navy">
         Motoboy
         <select
           name="motoboy_id"
           required
           defaultValue=""
-          className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+          className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
         >
           <option value="" disabled>
             Selecione…
@@ -50,43 +50,43 @@ export function NewShiftForm({
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col text-sm font-medium text-slate-700">
+        <label className="flex flex-col text-sm font-medium text-navy">
           Data
           <input
             type="date"
             name="work_date"
             required
             defaultValue={todayISO()}
-            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+            className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
           />
         </label>
-        <label className="flex flex-col text-sm font-medium text-slate-700">
+        <label className="flex flex-col text-sm font-medium text-navy">
           Hora chegada
           <input
             type="time"
             name="arrival_time"
-            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+            className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
           />
         </label>
       </div>
 
-      <label className="flex flex-col text-sm font-medium text-slate-700">
+      <label className="flex flex-col text-sm font-medium text-navy">
         Observação (opcional)
         <input
           type="text"
           name="notes"
           maxLength={200}
           placeholder=""
-          className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+          className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
         />
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-2xl bg-brand py-3 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
+        className="w-full rounded-2xl bg-cyan py-3 text-sm font-semibold text-white shadow hover:bg-cyan-deep disabled:opacity-50"
       >
         {submitting ? "Criando…" : "Iniciar turno"}
       </button>

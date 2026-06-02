@@ -29,7 +29,7 @@ export function AreaForm() {
         name="name"
         required
         placeholder="Nome do bairro"
-        className="col-span-3 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-3 rounded-lg border border-line px-3 py-2 text-sm"
       />
       <input
         type="number"
@@ -38,16 +38,16 @@ export function AreaForm() {
         step="0.5"
         min={0}
         placeholder="Taxa"
-        className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="col-span-2 rounded-lg border border-line px-3 py-2 text-sm"
       />
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-2 rounded-lg bg-brand text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+        className="col-span-2 rounded-lg bg-cyan text-sm font-semibold text-white hover:bg-cyan-deep disabled:opacity-50"
       >
         {submitting ? "..." : "Adicionar"}
       </button>
-      {error && <p className="col-span-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="col-span-4 text-sm text-danger">{error}</p>}
     </form>
   );
 }

@@ -3,20 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function updateUserProfile(formData: FormData) {
+async function requireAdmin() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Não autenticado" };
-
-  // Confere que o caller é admin
+  if (!user) return { supabase, ok: false as const, error: "Não autenticado" };
   const { data: me } = await supabase
     .from("user_profiles")
     .select("role")
     .eq("user_id", user.id)
     .single();
   if (!me || me.role !== "admin") {
-    return { ok: false, error: "Só admin pode mudar papéis." };
+    return { supabase, ok: false as const, error: "Só admin." };
   }
+  return { supabase, ok: true as const };
+}
+
+export async function updateUserProfile(formData: FormData) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const supabase = auth.supabase;
 
   const target_user_id = String(formData.get("user_id") || "");
   const display_name = String(formData.get("display_name") || "").trim() || null;
@@ -44,5 +49,32 @@ export async function updateUserProfile(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/caixa");
   revalidatePath("/fechar-o-dia");
+  return { ok: true };
+}
+
+export async function updateDailyRevenueGoal(formData: FormData) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const supabase = auth.supabase;
+
+  const raw = String(formData.get("goal") || "").replace(",", ".");
+  const goal = Number(raw);
+  if (!Number.isFinite(goal) || goal <= 0) {
+    return { ok: false, error: "Valor inválido." };
+  }
+
+  const { error } = await supabase
+    .from("app_settings")
+    .upsert(
+      {
+        key: "revenue_goal_daily",
+        value: goal,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" },
+    );
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  revalidatePath("/cadastros");
   return { ok: true };
 }

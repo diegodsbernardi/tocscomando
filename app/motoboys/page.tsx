@@ -6,6 +6,7 @@ import { startOfTuesdayWeek, endOfTuesdayWeek, todayISO, formatDateBR } from "@/
 import { CloseWeekButton, DeleteShiftButton } from "@/components/MotoboyShiftActions";
 import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
+import { canSeeMotoboys, getCurrentProfile, roleLabel } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,9 @@ export default async function MotoboysPage({
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const profile = await getCurrentProfile();
+  if (!canSeeMotoboys(profile)) redirect("/");
 
   const refDate = searchParams.semana || todayISO();
   const weekStart = startOfTuesdayWeek(refDate);
@@ -140,6 +144,7 @@ export default async function MotoboysPage({
       <TopBar
         title="Motoboys"
         subtitle="entregas dos terceiros"
+        role={roleLabel(profile)}
         rightSlot={
           <Link
             href="/motoboys/historico"
@@ -179,13 +184,13 @@ export default async function MotoboysPage({
 
       <Link
         href="/motoboys/turno/novo"
-        className="mb-4 flex items-center justify-center rounded-2xl bg-brand py-3 text-sm font-semibold text-white shadow hover:bg-brand-dark"
+        className="mb-4 flex items-center justify-center rounded-2xl bg-cyan py-3 text-sm font-bold text-white shadow-card hover:bg-cyan-deep"
       >
         + Novo turno
       </Link>
 
       {/* Turnos da semana atual, agrupados por dia */}
-      <h2 className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <h2 className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-muted">
         <span>
           Semana {formatDateBR(weekStart, { day: "2-digit", month: "short" })} →{" "}
           {formatDateBR(weekEnd, { day: "2-digit", month: "short" })}
@@ -193,14 +198,14 @@ export default async function MotoboysPage({
         <span className="flex gap-1">
           <Link
             href={`/motoboys?semana=${prevWeekRef}`}
-            className="rounded px-1.5 py-0.5 hover:bg-slate-100"
+            className="rounded px-1.5 py-0.5 hover:bg-line"
             aria-label="Semana anterior"
           >
             ←
           </Link>
           <Link
             href={`/motoboys?semana=${nextWeekRef}`}
-            className="rounded px-1.5 py-0.5 hover:bg-slate-100"
+            className="rounded px-1.5 py-0.5 hover:bg-line"
             aria-label="Próxima semana"
           >
             →
@@ -213,7 +218,7 @@ export default async function MotoboysPage({
       {/* Resumo semanal por motoboy */}
       <section className="mt-5 rounded-2xl bg-white p-4 shadow">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
             Pagamento da semana
           </h2>
           <CloseWeekButton
@@ -225,31 +230,31 @@ export default async function MotoboysPage({
         </div>
 
         {weekRows.length === 0 ? (
-          <p className="py-3 text-center text-sm text-slate-500">Nenhum turno nesta semana.</p>
+          <p className="py-3 text-center text-sm text-muted">Nenhum turno nesta semana.</p>
         ) : (
           <>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-line">
               {weekRows.map((r) => {
                 const total = r.paid_total + r.pending_total;
                 return (
                   <div key={r.motoboy_id} className="flex items-center justify-between py-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">{r.name}</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="truncate text-sm font-semibold text-navy">{r.name}</p>
+                      <p className="text-[11px] text-muted">
                         {r.rides} corridas
                         {r.pending_count > 0 && (
-                          <span className="ml-2 rounded bg-amber-100 px-1 py-0.5 text-amber-700">
+                          <span className="ml-2 rounded bg-warn-bg px-1 py-0.5 text-warn">
                             {r.pending_count} pendente{r.pending_count > 1 ? "s" : ""}
                           </span>
                         )}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold tabular-nums text-slate-800">
+                      <p className="text-sm font-semibold tabular-nums text-navy">
                         {brl(total)}
                       </p>
                       {r.pending_total > 0 && (
-                        <p className="text-[11px] text-amber-700 tabular-nums">
+                        <p className="text-[11px] text-warn tabular-nums">
                           {brl(r.pending_total)} a pagar
                         </p>
                       )}
@@ -258,13 +263,13 @@ export default async function MotoboysPage({
                 );
               })}
             </div>
-            <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-              <span className="text-sm font-semibold text-slate-700">Total</span>
+            <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+              <span className="text-sm font-semibold text-navy">Total</span>
               <div className="text-right">
-                <p className="text-base font-bold tabular-nums text-slate-900">
+                <p className="text-base font-bold tabular-nums text-navy">
                   {brl(weekTotalPaid + weekTotalDue)}
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-muted">
                   Pago {brl(weekTotalPaid)} · A pagar {brl(weekTotalDue)}
                 </p>
               </div>
@@ -289,7 +294,7 @@ export default async function MotoboysPage({
 function ShiftsList({ shifts }: { shifts: Shift[] }) {
   if (shifts.length === 0) {
     return (
-      <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow">
+      <p className="rounded-2xl bg-white p-6 text-center text-sm text-muted shadow">
         Nenhum turno nesta semana.
       </p>
     );
@@ -311,7 +316,7 @@ function ShiftsList({ shifts }: { shifts: Shift[] }) {
         const rides = list.reduce((acc, s) => acc + shiftRides(s), 0);
         return (
           <section key={date}>
-            <h3 className="mb-1 flex items-center justify-between px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-1 flex items-center justify-between px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
               <span>{formatDateBR(date, { weekday: "short", day: "2-digit", month: "short" })}</span>
               <span className="tabular-nums">
                 {rides} corridas · {brl(total)}
@@ -327,29 +332,29 @@ function ShiftsList({ shifts }: { shifts: Shift[] }) {
                   <article
                     key={s.id}
                     className={`flex items-center justify-between gap-2 rounded-2xl p-3 shadow ${
-                      s.paid ? "bg-emerald-50" : "bg-white"
+                      s.paid ? "bg-ok-bg" : "bg-white"
                     }`}
                   >
                     <Link href={`/motoboys/turno/${s.id}`} className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800">
+                      <p className="truncate text-sm font-semibold text-navy">
                         {s.motoboys?.name ?? "—"}
                         {s.arrival_time && (
-                          <span className="ml-1 text-[11px] font-normal text-slate-500">
+                          <span className="ml-1 text-[11px] font-normal text-muted">
                             {s.arrival_time.slice(0, 5)}
                           </span>
                         )}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-muted">
                         {rides} corridas
-                        {s.paid && <span className="ml-2 text-emerald-700">· pago</span>}
+                        {s.paid && <span className="ml-2 text-ok">· pago</span>}
                       </p>
                     </Link>
                     <div className="text-right">
-                      <p className="text-sm font-bold tabular-nums text-slate-800">
+                      <p className="text-sm font-bold tabular-nums text-navy">
                         {brl(effective)}
                       </p>
                       {belowMin && (
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-danger">
                           mín · era {brl(total)}
                         </p>
                       )}

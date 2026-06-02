@@ -49,32 +49,32 @@ export async function ExtrasPendingCard() {
       className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-md"
     >
       <div className="flex items-baseline justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
           Extras
         </span>
-        <span className="text-xs text-slate-400">ver →</span>
+        <span className="text-xs text-muted">ver →</span>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-warn">
             A pagar (mês)
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">
             {brl(totalPendente)}
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-muted">
             {countPendente} {countPendente === 1 ? "registro" : "registros"}
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ok">
             Pago hoje
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">
             {brl(totalPagoHoje)}
           </p>
-          <p className="text-[11px] text-slate-500">&nbsp;</p>
+          <p className="text-[11px] text-muted">&nbsp;</p>
         </div>
       </div>
     </Link>

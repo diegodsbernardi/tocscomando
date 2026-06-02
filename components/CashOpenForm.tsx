@@ -28,13 +28,13 @@ export function CashOpenForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl bg-white p-5 shadow">
-      <label className="flex flex-col text-sm font-medium text-slate-700">
+      <label className="flex flex-col text-sm font-medium text-navy">
         Caixa
         <select
           name="drawer_id"
           required
           defaultValue={preselectedDrawerId}
-          className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+          className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
         >
           {drawers.map((d) => (
             <option key={d.id} value={d.id}>
@@ -45,8 +45,8 @@ export function CashOpenForm({
       </label>
 
       <div>
-        <span className="block text-sm font-medium text-slate-700">Valor de abertura</span>
-        <p className="mb-2 text-[11px] text-slate-500">
+        <span className="block text-sm font-medium text-navy">Valor de abertura</span>
+        <p className="mb-2 text-[11px] text-muted">
           Quanto tem no caixa agora. Use o contador pra evitar erro de soma.
         </p>
         <CashCounter
@@ -55,23 +55,23 @@ export function CashOpenForm({
         />
       </div>
 
-      <label className="flex flex-col text-sm font-medium text-slate-700">
+      <label className="flex flex-col text-sm font-medium text-navy">
         Observação (opcional)
         <input
           type="text"
           name="notes"
           maxLength={200}
           placeholder="Ex: troco baixo, falta moeda etc"
-          className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
+          className="mt-1 rounded-lg border border-line px-3 py-2 text-base"
         />
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-2xl bg-brand py-3 text-sm font-semibold text-white shadow hover:bg-brand-dark disabled:opacity-50"
+        className="w-full rounded-2xl bg-cyan py-3 text-sm font-semibold text-white shadow hover:bg-cyan-deep disabled:opacity-50"
       >
         {submitting ? "Abrindo…" : "Abrir caixa"}
       </button>
