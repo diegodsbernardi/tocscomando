@@ -183,6 +183,8 @@ export async function addMovement(formData: FormData) {
 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/caixa");
+  revalidatePath(`/caixa/fechar/${session_id}`);
+  revalidatePath("/fechar-o-dia");
   return { ok: true };
 }
 
@@ -191,8 +193,19 @@ export async function deleteMovement(id: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Não autenticado" };
 
+  // Pega session_id antes do delete pra revalidar a rota correta
+  const { data: mov } = await supabase
+    .from("cash_movements")
+    .select("session_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("cash_movements").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/caixa");
+  if (mov?.session_id) {
+    revalidatePath(`/caixa/fechar/${mov.session_id}`);
+  }
+  revalidatePath("/fechar-o-dia");
   return { ok: true };
 }

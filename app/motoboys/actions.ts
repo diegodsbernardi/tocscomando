@@ -46,6 +46,10 @@ export async function createShift(formData: FormData) {
   redirect(`/motoboys/turno/${data!.id}`);
 }
 
+/**
+ * @deprecated Use saveShiftRides (batch) — esta versão dispara 1 request por bairro
+ * e causa race conditions quando o usuário digita rápido. Mantida só pra compat.
+ */
 export async function updateShiftRide(shiftId: string, areaId: string, ridesCount: number) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -89,6 +93,85 @@ export async function updateShiftRide(shiftId: string, areaId: string, ridesCoun
   if (error) return { ok: false, error: error.message };
   revalidatePath("/motoboys");
   revalidatePath(`/motoboys/turno/${shiftId}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/**
+ * Salva TODAS as corridas do turno num único batch.
+ * - bairros com count > 0 viram upsert (rides_count, fee_at_time atual)
+ * - bairros com count = 0 são deletados (se existirem)
+ *
+ * Substitui a versão por-bairro (updateShiftRide) — sem race conditions,
+ * sem F5 obrigatório (revalida turno + motoboys + home + fechar-o-dia).
+ */
+export async function saveShiftRides(
+  shiftId: string,
+  rides: Record<string, number>,
+) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Não autenticado" };
+
+  // Sanitiza: aceita só números inteiros >= 0
+  const sanitized = new Map<string, number>();
+  for (const [areaId, count] of Object.entries(rides)) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    sanitized.set(areaId, n);
+  }
+  if (sanitized.size === 0) return { ok: true };
+
+  // Pega taxas atuais de todos os bairros mencionados
+  const areaIds = Array.from(sanitized.keys());
+  const { data: areasRows, error: areasErr } = await supabase
+    .from("delivery_areas")
+    .select("id, fee")
+    .in("id", areaIds);
+  if (areasErr) return { ok: false, error: areasErr.message };
+
+  const feeById = new Map<string, number>();
+  for (const r of areasRows || []) {
+    feeById.set(r.id, Number(r.fee));
+  }
+
+  // Separa upserts (count > 0) e deletes (count == 0)
+  const upserts: { shift_id: string; area_id: string; rides_count: number; fee_at_time: number }[] = [];
+  const deletes: string[] = [];
+  for (const [areaId, count] of sanitized) {
+    if (count > 0) {
+      const fee = feeById.get(areaId);
+      if (fee == null) continue; // bairro não existe → ignora silenciosamente
+      upserts.push({
+        shift_id: shiftId,
+        area_id: areaId,
+        rides_count: count,
+        fee_at_time: fee,
+      });
+    } else {
+      deletes.push(areaId);
+    }
+  }
+
+  if (upserts.length > 0) {
+    const { error } = await supabase
+      .from("motoboy_shift_rides")
+      .upsert(upserts, { onConflict: "shift_id,area_id" });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  if (deletes.length > 0) {
+    const { error } = await supabase
+      .from("motoboy_shift_rides")
+      .delete()
+      .eq("shift_id", shiftId)
+      .in("area_id", deletes);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/motoboys/turno/${shiftId}`);
+  revalidatePath("/motoboys");
+  revalidatePath("/motoboys/historico");
+  revalidatePath("/fechar-o-dia");
   revalidatePath("/");
   return { ok: true };
 }
