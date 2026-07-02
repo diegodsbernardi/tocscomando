@@ -42,8 +42,9 @@ const SAIPOS_SELECTORS = {
 };
 
 function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Data do dia de trabalho no fuso do restaurante — Actions roda em UTC,
+  // e depois da meia-noite UTC ainda é o mesmo dia em BRT.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
 function parseBR(text) {

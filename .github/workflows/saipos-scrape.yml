@@ -19,20 +19,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checar credenciais Saipos
+        id: creds
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+        run: |
+          if [ -z "$SAIPOS_USER" ]; then
+            echo "::notice::SAIPOS_USER não configurado — pulando scrape."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.creds.outputs.ok == 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.creds.outputs.ok == 'true'
         with:
           node-version: "20"
           cache: npm
 
       - name: Install deps
+        if: steps.creds.outputs.ok == 'true'
         run: npm install --no-audit --no-fund
 
       - name: Install Playwright (Chromium)
+        if: steps.creds.outputs.ok == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run scraper
+        if: steps.creds.outputs.ok == 'true'
         env:
           SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
           SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
