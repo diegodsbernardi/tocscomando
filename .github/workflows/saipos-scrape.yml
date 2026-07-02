@@ -60,7 +60,7 @@ jobs:
         run: node scripts/scrape_saipos.mjs
 
       - name: Upload error screenshot
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: saipos-error-${{ github.run_id }}

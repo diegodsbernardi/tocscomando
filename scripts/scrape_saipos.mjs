@@ -29,9 +29,11 @@ const DRY_RUN = process.env.DRY_RUN === "1";
 
 // Selectors — ajustar quando confirmar a estrutura real do Saipos
 const SAIPOS_SELECTORS = {
-  emailInput: 'input[name="email"], input[type="email"], input[name="login"]',
-  passInput: 'input[name="password"], input[type="password"]',
-  submitBtn: 'button[type="submit"], button:has-text("Entrar"), button:has-text("Login")',
+  // Login em conta.saipos.com (Angular): inputs identificados pelo placeholder,
+  // submit é um botão redondo (FAB) com seta, sem texto.
+  emailInput: 'input[placeholder="E-mail"], input[type="email"], input[name="email"]',
+  passInput: 'input[placeholder="Senha"], input[type="password"]',
+  submitBtn: 'button[type="submit"], button.md-fab, md-card button, button:has-text("Entrar")',
   // pós-login: aguardamos um marker que indica que estamos no dashboard
   dashboardMarker: '[data-test="dashboard"], a[href*="dashboard"], a[href*="painel"]',
   // sales card (placeholders — vão ser ajustados pelo Diego ao testar)
@@ -65,10 +67,23 @@ async function login(page) {
   await page.fill(SAIPOS_SELECTORS.passInput, PASS);
 
   console.log("[saipos] submitting login");
-  await Promise.all([
-    page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}),
-    page.click(SAIPOS_SELECTORS.submitBtn),
-  ]);
+  const submit = page.locator(SAIPOS_SELECTORS.submitBtn).first();
+  if (await submit.count()) {
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}),
+      submit.click(),
+    ]);
+  } else {
+    // fallback: Enter no campo de senha
+    console.log("[saipos] botao de submit nao encontrado — usando Enter");
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}),
+      page.press(SAIPOS_SELECTORS.passInput, "Enter"),
+    ]);
+  }
+  // SPA Angular: dá um tempo pro redirect/render pós-login
+  await page.waitForTimeout(5000);
+  console.log(`[saipos] URL pós-login: ${page.url()}`);
 
   console.log("[saipos] aguardando dashboard");
   await page
@@ -141,6 +156,9 @@ async function main() {
     if (DRY_RUN) {
       console.log("[saipos] DRY_RUN — não gravando no banco");
       console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 2000));
+      // screenshot da tela pós-login pra calibrar seletores
+      await page.screenshot({ path: "saipos-error.png", fullPage: true });
+      console.log("[saipos] screenshot pós-login salvo (artifact)");
       return;
     }
 
