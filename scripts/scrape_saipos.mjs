@@ -26,6 +26,8 @@ const PASS = process.env.SAIPOS_PASS;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DRY_RUN = process.env.DRY_RUN === "1";
+// Loja ativa do TOCS no Saipos (49897 é o CNPJ novo, "Em implantação")
+const STORE_ID = process.env.SAIPOS_STORE_ID || "49895";
 
 // Selectors — ajustar quando confirmar a estrutura real do Saipos
 const SAIPOS_SELECTORS = {
@@ -103,6 +105,23 @@ async function login(page) {
     });
 }
 
+async function selectStore(page) {
+  // Pós-login cai em "Selecione a loja" (tabela com botão-seta por linha).
+  let row = page.locator(`tr:has-text("${STORE_ID}")`).first();
+  if (!(await row.count())) {
+    // fallback: a linha da loja com status "Ativo"
+    row = page.locator('tr:has-text("Ativo")').first();
+  }
+  if (await row.count()) {
+    console.log(`[saipos] selecionando loja ${STORE_ID}`);
+    await row.locator("button").first().click();
+    await page.waitForTimeout(6000);
+    console.log(`[saipos] URL pós-loja: ${page.url()}`);
+  } else {
+    console.log("[saipos] tela de seleção de loja não apareceu — seguindo");
+  }
+}
+
 async function extractSales(page) {
   // Tenta extrair os valores de venda do dia.
   // Se algum seletor falhar, retorna null pro campo (snapshot ainda é gravado pra debug).
@@ -155,6 +174,7 @@ async function main() {
 
   try {
     await login(page);
+    await selectStore(page);
     const sales = await extractSales(page);
     console.log("[saipos] vendas extraídas:", {
       total: sales.total_sales,
