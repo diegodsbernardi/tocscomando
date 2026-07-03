@@ -83,6 +83,16 @@ async function login(page) {
   }
   // SPA Angular: dá um tempo pro redirect/render pós-login
   await page.waitForTimeout(5000);
+
+  // Saipos permite 1 sessão por usuário: se aparecer o diálogo
+  // "já está conectado em outro computador", assume a sessão (SIM).
+  // IMPORTANTE: usar um usuário dedicado pro robô — senão isso derruba o PDV.
+  const takeover = page.locator('button:has-text("SIM"), .md-button:has-text("SIM")').first();
+  if (await takeover.count()) {
+    console.log("[saipos] sessão ativa em outro computador — assumindo (SIM)");
+    await takeover.click();
+    await page.waitForTimeout(5000);
+  }
   console.log(`[saipos] URL pós-login: ${page.url()}`);
 
   console.log("[saipos] aguardando dashboard");
