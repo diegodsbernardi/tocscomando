@@ -186,6 +186,15 @@ async function main() {
     if (DRY_RUN) {
       console.log("[saipos] DRY_RUN — não gravando no banco");
       console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 2000));
+      // abre o menu lateral e lista todas as rotas visíveis no DOM
+      await page.locator("md-toolbar button, header button, .md-toolbar-tools button").first().click().catch(() => {});
+      await page.waitForTimeout(2000);
+      const links = await page.evaluate(() =>
+        [...document.querySelectorAll("a[href]")]
+          .map((a) => `${a.getAttribute("href")} :: ${a.textContent.trim().replace(/\s+/g, " ").slice(0, 60)}`)
+          .filter((s) => s.includes("#/app"))
+      );
+      console.log("[saipos] rotas encontradas:\n" + links.join("\n"));
       // screenshot da tela pós-login pra calibrar seletores
       await page.screenshot({ path: "saipos-error.png", fullPage: true });
       console.log("[saipos] screenshot pós-login salvo (artifact)");
