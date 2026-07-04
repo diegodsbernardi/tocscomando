@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/profile";
 import { brl } from "@/lib/format";
 
 function monthRange() {
@@ -18,9 +19,7 @@ function monthLabel() {
 
 export async function ExtrasMiniCard() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { start, end } = monthRange();

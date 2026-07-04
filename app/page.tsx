@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { TopBar } from "@/components/ui/TopBar";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TodayHero } from "@/components/dashboard/TodayHero";
@@ -10,15 +11,12 @@ import { CaptureActionCard } from "@/components/dashboard/CaptureActionCard";
 import { ExtrasMiniCard } from "@/components/dashboard/ExtrasMiniCard";
 import { CloseDayCard } from "@/components/dashboard/CloseDayCard";
 import { firstName, greetingForNow } from "@/lib/format";
-import { getCurrentProfile, roleLabel } from "@/lib/profile";
+import { getAuthUser, getCurrentProfile, roleLabel } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const profile = await getCurrentProfile();
@@ -60,11 +58,19 @@ export default async function HomePage() {
           </div>
         }
       />
-      <TodayHero />
-      <QuickStats />
+      {/* Cards com query própria fazem streaming: a home aparece na hora
+          e cada card entra quando o dado chega */}
+      <Suspense fallback={<Skeleton className="mx-4 mt-3 h-[220px] rounded-hero" />}>
+        <TodayHero />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[76px] rounded-card" />}>
+        <QuickStats />
+      </Suspense>
       <CaptureActionCard />
       <CloseDayCard />
-      <ExtrasMiniCard />
+      <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[104px] rounded-card" />}>
+        <ExtrasMiniCard />
+      </Suspense>
     </Shell>
   );
 }

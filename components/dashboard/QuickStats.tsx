@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/profile";
 import { brl } from "@/lib/format";
 
 function startOfDayISO() {
@@ -9,9 +10,7 @@ function startOfDayISO() {
 
 export async function QuickStats() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { data } = await supabase

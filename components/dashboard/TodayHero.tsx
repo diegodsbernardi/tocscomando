@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/profile";
 import { brl, brlSplit } from "@/lib/format";
 import { getDailyRevenueGoal } from "@/lib/settings";
 
@@ -10,12 +11,7 @@ function startOfDayISO() {
 
 export async function TodayHero() {
   const supabase = createClient();
-  const [
-    {
-      data: { user },
-    },
-    metaDia,
-  ] = await Promise.all([supabase.auth.getUser(), getDailyRevenueGoal()]);
+  const [user, metaDia] = await Promise.all([getAuthUser(), getDailyRevenueGoal()]);
   if (!user) return null;
 
   const { data } = await supabase

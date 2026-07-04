@@ -21,9 +21,19 @@ export type UserProfile = {
  */
 export const getCurrentProfile = cache(getCurrentProfileImpl);
 
-async function getCurrentProfileImpl(): Promise<UserProfile | null> {
+/**
+ * getUser deduplicado por request (React cache) — evita bater no endpoint
+ * de auth do Supabase várias vezes no mesmo render (page + Shell + cards).
+ */
+export const getAuthUser = cache(async () => {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
+
+async function getCurrentProfileImpl(): Promise<UserProfile | null> {
+  const supabase = createClient();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { data: existing } = await supabase
