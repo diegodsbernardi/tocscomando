@@ -42,6 +42,12 @@ function fmtDayBR(iso: string) {
   });
 }
 
+function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m - 1, 1)
@@ -130,8 +136,30 @@ export default async function ExtrasPage({
             aria-hidden
             className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10"
           />
-          <div className="text-xs font-semibold tracking-[0.5px] opacity-85">
-            {monthLabel(mes)}
+          <div className="flex items-center justify-between">
+            <Link
+              href={`?mes=${shiftMonth(mes, -1)}&centro=${centro}`}
+              aria-label="Mês anterior"
+              className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-sm font-bold"
+            >
+              ‹
+            </Link>
+            <div className="text-xs font-semibold tracking-[0.5px] opacity-85">
+              {monthLabel(mes)}
+            </div>
+            {mes < currentMonth() ? (
+              <Link
+                href={`?mes=${shiftMonth(mes, 1)}&centro=${centro}`}
+                aria-label="Próximo mês"
+                className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-sm font-bold"
+              >
+                ›
+              </Link>
+            ) : (
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/5 text-sm font-bold opacity-30">
+                ›
+              </span>
+            )}
           </div>
           <div className="mt-0.5 font-display text-3xl font-extrabold tracking-[-1px]">
             {brl(totals.total)}
