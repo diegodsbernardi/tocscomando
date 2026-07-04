@@ -123,13 +123,22 @@ async function selectStore(page) {
 }
 
 async function gotoSalesDashboard(page) {
-  // Painel "Acompanhamento de vendas" — mostra o dia corrente ao vivo
-  console.log("[saipos] abrindo acompanhamento de vendas");
-  await page.goto(`${BASE_URL}/#/app/dashboard/sales-tracking`, {
+  // Relatório "Vendas por forma de pagamento" — fonte dos totais por dinheiro/cartão/pix
+  console.log("[saipos] abrindo vendas por forma de pagamento");
+  await page.goto(`${BASE_URL}/#/app/report/sales-by-payment-type`, {
     waitUntil: "domcontentloaded",
     timeout: 60000,
   });
-  await page.waitForTimeout(8000); // SPA: espera os cards carregarem
+  await page.waitForTimeout(8000); // SPA: espera carregar
+  // tenta filtrar pelo dia corrente e buscar
+  const searchBtn = page
+    .locator('button:has-text("Buscar"), button:has-text("Pesquisar"), button:has-text("Filtrar"), button:has-text("Gerar")')
+    .first();
+  if (await searchBtn.count()) {
+    console.log("[saipos] clicando em buscar/filtrar");
+    await searchBtn.click().catch(() => {});
+    await page.waitForTimeout(8000);
+  }
 }
 
 async function extractSales(page) {
