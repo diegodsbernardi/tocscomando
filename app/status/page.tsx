@@ -54,7 +54,7 @@ export default function StatusPage() {
         <h1 className="text-xl font-bold text-navy">Status do sistema</h1>
         <Link
           href="/"
-          className="text-sm font-medium text-sky-600 hover:underline"
+          className="text-sm font-semibold text-cyan hover:underline"
         >
           Voltar
         </Link>
@@ -71,7 +71,7 @@ export default function StatusPage() {
           {status.services.map((s) => (
             <li
               key={s.name}
-              className="flex items-center justify-between rounded-lg border border-line bg-white p-3"
+              className="flex items-center justify-between rounded-card bg-white p-3 shadow-card"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-navy">
@@ -87,7 +87,7 @@ export default function StatusPage() {
                 <span className="text-xs text-muted">{s.latency_ms}ms</span>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    s.ok ? "bg-ok-bg0" : "bg-danger-bg0"
+                    s.ok ? "bg-ok" : "bg-danger"
                   }`}
                 />
               </div>
@@ -111,7 +111,7 @@ export default function StatusPage() {
         </button>
       </div>
 
-      <div className="rounded-lg bg-slate-50 p-3 text-xs text-muted">
+      <div className="rounded-card bg-white p-4 text-xs text-muted shadow-card">
         <p className="mb-1 font-medium text-navy">Se algo estiver em vermelho:</p>
         <p>
           Avise o Diego com um print dessa tela. Enquanto isso, anote os cupons

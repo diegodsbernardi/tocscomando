@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
@@ -182,15 +181,6 @@ export default async function PerfilExtraPage({
         <p className="mt-4 px-1 text-[11px] text-muted">
           Limite atual: {VINCULO_LIMIT} vindas/semana. Pode ser ajustado depois.
         </p>
-
-        <div className="mt-4 flex justify-center">
-          <Link
-            href="/extras"
-            className="rounded-xl bg-line px-4 py-2 text-xs font-bold text-navy"
-          >
-            ← Voltar para extras
-          </Link>
-        </div>
       </div>
     </Shell>
   );

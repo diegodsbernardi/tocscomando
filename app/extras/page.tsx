@@ -6,6 +6,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { MarkPaidToggle, DeleteExtraButton } from "@/components/ExtraRowActions";
 import { brl } from "@/lib/format";
 import { isoWeekRange, isoToday, VINCULO_LIMIT, levelForCount } from "@/lib/vinculo";
+import { getCurrentProfile, roleLabel } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export default async function ExtrasPage({
     | "todos"
     | "atendimento"
     | "cozinha";
+  const profile = await getCurrentProfile();
   const { start, end } = monthRange(mes);
   const week = isoWeekRange(isoToday());
 
@@ -127,7 +129,7 @@ export default async function ExtrasPage({
 
   return (
     <Shell>
-      <TopBar title="Extras" subtitle="freelancers do mês" />
+      <TopBar title="Extras" subtitle="freelancers do mês" role={roleLabel(profile)} />
 
       <div className="px-4">
         {/* HERO */}
