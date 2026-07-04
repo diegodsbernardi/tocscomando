@@ -122,49 +122,46 @@ async function selectStore(page) {
   }
 }
 
-async function gotoSalesDashboard(page) {
-  // Relatório "Vendas por forma de pagamento" — fonte dos totais por dinheiro/cartão/pix
-  console.log("[saipos] abrindo vendas por forma de pagamento");
-  await page.goto(`${BASE_URL}/#/app/report/sales-by-payment-type`, {
-    waitUntil: "domcontentloaded",
-    timeout: 60000,
+async function fetchSalesByPaymentType(page, authHeader) {
+  // Chama a API interna do Saipos (mesma do relatório "Vendas por forma de
+  // pagamento") com a data de hoje. Retorna uma linha por forma de pagamento:
+  // { desc_store_payment_type, total_value, count_payments, total_saled, count_sales }
+  const [y, m, d] = todayISO().split("-");
+  const dateBR = `${d}/${m}/${y}`;
+  const filter = encodeURIComponent(
+    JSON.stringify({
+      start_date: dateBR,
+      end_date: dateBR,
+      exclude_canceled: 1,
+      only_nfe: 0,
+      id_store_shift: 0,
+      id_sale_types: ["1", "2", "3", "4"],
+      id_user_stores: null,
+    })
+  );
+  const url = `https://api.saipos.com/v1/stores/${STORE_ID}/sales-by-payment-type?filter=${filter}`;
+  console.log(`[saipos] consultando vendas de ${dateBR} via API`);
+  const res = await page.request.get(url, {
+    headers: { authorization: authHeader },
+    timeout: 30000,
   });
-  await page.waitForTimeout(8000); // SPA: espera carregar
-  // tenta filtrar pelo dia corrente e buscar
-  const searchBtn = page
-    .locator('button:has-text("Buscar"), button:has-text("Pesquisar"), button:has-text("Filtrar"), button:has-text("Gerar")')
-    .first();
-  if (await searchBtn.count()) {
-    console.log("[saipos] clicando em buscar/filtrar");
-    await searchBtn.click().catch(() => {});
-    await page.waitForTimeout(8000);
+  if (!res.ok()) {
+    throw new Error(`sales-by-payment-type HTTP ${res.status()}: ${(await res.text()).slice(0, 300)}`);
   }
-}
+  const rows = await res.json();
 
-async function extractSales(page) {
-  // Tenta extrair os valores de venda do dia.
-  // Se algum seletor falhar, retorna null pro campo (snapshot ainda é gravado pra debug).
-  const data = await page.evaluate((sel) => {
-    const tx = (s) => {
-      const el = document.querySelector(s);
-      return el ? el.textContent?.trim() : null;
-    };
-    return {
-      total: tx(sel.totalSales),
-      cash: tx(sel.cashSales),
-      card: tx(sel.cardSales),
-      pix: tx(sel.pixSales),
-      // Snapshot da página inteira pra debug — primeiro 5KB de HTML
-      html_preview: document.body?.innerText?.slice(0, 5000) ?? null,
-    };
-  }, SAIPOS_SELECTORS);
+  const sumWhere = (re) =>
+    rows
+      .filter((r) => re.test(r.desc_store_payment_type || ""))
+      .reduce((acc, r) => acc + (Number(r.total_value) || 0), 0);
 
   return {
-    total_sales: parseBR(data.total),
-    cash_sales: parseBR(data.cash),
-    card_sales: parseBR(data.card),
-    pix_sales: parseBR(data.pix),
-    raw: data,
+    // total_saled é o total vendido do dia (repetido em toda linha)
+    total_sales: rows.length ? Number(rows[0].total_saled) || 0 : 0,
+    cash_sales: sumWhere(/dinheiro/i),
+    card_sales: sumWhere(/cr[eé]d|d[eé]b|cart[aã]o|voucher|vale/i),
+    pix_sales: sumWhere(/pix/i),
+    raw: { date: dateBR, rows },
   };
 }
 
@@ -191,26 +188,22 @@ async function main() {
   });
   const page = await context.newPage();
 
-  // No DRY_RUN, sniffa as respostas JSON da API pra mapear os endpoints de vendas
-  const apiHits = [];
-  if (DRY_RUN) {
-    page.on("response", async (res) => {
-      try {
-        const ct = res.headers()["content-type"] || "";
-        const url = res.url();
-        if (ct.includes("json") && !/importmap|manifest|\.js/i.test(url)) {
-          const body = await res.text();
-          apiHits.push(`${res.status()} ${url.replace(/^https?:\/\//, "")} :: ${body.slice(0, 400)}`);
-        }
-      } catch {}
-    });
-  }
+  // Captura o header Authorization que o app manda pra api.saipos.com,
+  // pra reusar nas chamadas diretas de API.
+  let authHeader = null;
+  page.on("request", (req) => {
+    const h = req.headers()["authorization"];
+    if (h && req.url().includes("api.saipos.com")) authHeader = h;
+  });
 
   try {
     await login(page);
     await selectStore(page);
-    await gotoSalesDashboard(page);
-    const sales = await extractSales(page);
+    if (!authHeader) {
+      await page.waitForTimeout(5000); // dá tempo do app chamar a API e revelar o token
+    }
+    if (!authHeader) throw new Error("não capturei o Authorization da sessão");
+    const sales = await fetchSalesByPaymentType(page, authHeader);
     console.log("[saipos] vendas extraídas:", {
       total: sales.total_sales,
       cash: sales.cash_sales,
@@ -220,13 +213,7 @@ async function main() {
 
     if (DRY_RUN) {
       console.log("[saipos] DRY_RUN — não gravando no banco");
-      console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 2000));
-      // dump das respostas JSON da API vistas na sessão (últimas 40)
-      console.log(`[saipos] ${apiHits.length} respostas JSON capturadas:`);
-      for (const h of apiHits.slice(-40)) console.log("[saipos:api] " + h);
-      // screenshot da tela pós-login pra calibrar seletores
-      await page.screenshot({ path: "saipos-error.png", fullPage: true });
-      console.log("[saipos] screenshot pós-login salvo (artifact)");
+      console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 3000));
       return;
     }
 
