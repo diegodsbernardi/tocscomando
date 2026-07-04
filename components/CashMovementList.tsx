@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog, notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useTransition } from "react";
 import { deleteMovement } from "@/app/caixa/actions";
 import { brl } from "@/lib/format";
@@ -34,12 +35,12 @@ function Row({ item: m }: { item: Movement }) {
   const [isPending, startTransition] = useTransition();
   const isOut = m.direction === "out";
 
-  function onDelete() {
+  async function onDelete() {
     if (isPending) return;
-    if (!window.confirm("Apagar essa movimentação?")) return;
+    if (!(await confirmDialog("Apagar essa movimentação?"))) return;
     startTransition(async () => {
       const res = await deleteMovement(m.id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 

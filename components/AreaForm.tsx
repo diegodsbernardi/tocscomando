@@ -33,6 +33,7 @@ export function AreaForm() {
       />
       <input
         type="number"
+        inputMode="decimal"
         name="fee"
         required
         step="0.5"

@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { deleteReport } from "@/app/historico/actions";
 
@@ -7,9 +8,9 @@ export function DeleteReportButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function handleClick() {
+  async function handleClick() {
     if (isPending) return;
-    const ok = window.confirm(
+    const ok = await confirmDialog(
       "Tem certeza que deseja apagar este relatório? Essa ação não pode ser desfeita.",
     );
     if (!ok) return;

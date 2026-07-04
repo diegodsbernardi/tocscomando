@@ -105,7 +105,7 @@ export function CashCounter({
                       onClick={() =>
                         setCounts({ ...counts, [String(d.v)]: Math.max(0, q - 1) })
                       }
-                      className="h-7 w-7 rounded-lg bg-line text-navy hover:bg-line"
+                      className="h-9 w-9 rounded-lg bg-line text-navy hover:bg-line"
                     >
                       −
                     </button>
@@ -126,7 +126,7 @@ export function CashCounter({
                     <button
                       type="button"
                       onClick={() => setCounts({ ...counts, [String(d.v)]: q + 1 })}
-                      className="h-7 w-7 rounded-lg bg-line text-navy hover:bg-line"
+                      className="h-9 w-9 rounded-lg bg-line text-navy hover:bg-line"
                     >
                       +
                     </button>

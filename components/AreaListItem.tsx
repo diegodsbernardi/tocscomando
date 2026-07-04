@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { toggleAreaActive, updateAreaFee } from "@/app/motoboys/actions";
 
@@ -21,12 +22,12 @@ export function AreaListItem({
   function saveFee() {
     const n = Number(fee);
     if (!(n > 0)) {
-      alert("Taxa precisa ser maior que zero");
+      notifyDialog("Taxa precisa ser maior que zero");
       return;
     }
     startTransition(async () => {
       const res = await updateAreaFee(id, n);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
       else setEditing(false);
     });
   }
@@ -35,7 +36,7 @@ export function AreaListItem({
     if (isPending) return;
     startTransition(async () => {
       const res = await toggleAreaActive(id, !active);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -52,6 +53,7 @@ export function AreaListItem({
         <div className="flex items-center gap-1">
           <input
             type="number"
+            inputMode="decimal"
             step="0.5"
             min={0}
             value={fee}

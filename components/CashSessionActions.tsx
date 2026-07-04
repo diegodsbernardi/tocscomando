@@ -1,17 +1,18 @@
 "use client";
 
+import { confirmDialog, notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useTransition } from "react";
 import { reopenSession, deleteSession } from "@/app/caixa/actions";
 
 export function ReopenButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
 
-  function onClick() {
+  async function onClick() {
     if (isPending) return;
-    if (!window.confirm("Reabrir essa sessão? Vai apagar o valor de fechamento.")) return;
+    if (!(await confirmDialog("Reabrir essa sessão? Vai apagar o valor de fechamento."))) return;
     startTransition(async () => {
       const res = await reopenSession(id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -29,12 +30,12 @@ export function ReopenButton({ id }: { id: string }) {
 export function DeleteSessionButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
 
-  function onClick() {
+  async function onClick() {
     if (isPending) return;
-    if (!window.confirm("Apagar essa sessão de caixa? Não dá pra desfazer.")) return;
+    if (!(await confirmDialog("Apagar essa sessão de caixa? Não dá pra desfazer."))) return;
     startTransition(async () => {
       const res = await deleteSession(id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -43,7 +44,7 @@ export function DeleteSessionButton({ id }: { id: string }) {
       onClick={onClick}
       disabled={isPending}
       aria-label="Apagar sessão"
-      className="rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50"
+      className="grid min-h-[40px] min-w-[36px] place-items-center rounded-lg px-2 text-sm text-danger hover:bg-danger-bg disabled:opacity-50"
     >
       {isPending ? "..." : "✕"}
     </button>

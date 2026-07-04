@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog, notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useTransition } from "react";
 import { markPaid, markUnpaid, deleteExtra } from "@/app/extras/actions";
 
@@ -10,7 +11,7 @@ export function MarkPaidToggle({ id, paid }: { id: string; paid: boolean }) {
     if (isPending) return;
     startTransition(async () => {
       const res = paid ? await markUnpaid(id) : await markPaid(id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -32,12 +33,12 @@ export function MarkPaidToggle({ id, paid }: { id: string; paid: boolean }) {
 export function DeleteExtraButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
+  async function handleClick() {
     if (isPending) return;
-    if (!window.confirm("Apagar este extra?")) return;
+    if (!(await confirmDialog("Apagar este extra?"))) return;
     startTransition(async () => {
       const res = await deleteExtra(id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -46,7 +47,7 @@ export function DeleteExtraButton({ id }: { id: string }) {
       onClick={handleClick}
       disabled={isPending}
       aria-label="Apagar extra"
-      className="rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50"
+      className="grid min-h-[40px] min-w-[36px] place-items-center rounded-lg px-2 text-sm text-danger hover:bg-danger-bg disabled:opacity-50"
     >
       {isPending ? "..." : "✕"}
     </button>

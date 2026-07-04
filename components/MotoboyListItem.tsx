@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { toggleMotoboyActive, updateMotoboy } from "@/app/motoboys/actions";
 
@@ -23,7 +24,7 @@ export function MotoboyListItem({
     if (isPending) return;
     startTransition(async () => {
       const res = await toggleMotoboyActive(id, !active);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 
@@ -35,7 +36,7 @@ export function MotoboyListItem({
       fd.set("name", name);
       fd.set("phone", phone);
       const res = await updateMotoboy(fd);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
       else setEditing(false);
     });
   }

@@ -1,16 +1,17 @@
 "use client";
 
+import { confirmDialog, notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { closeWeek, deleteShift } from "@/app/motoboys/actions";
 
 export function DeleteShiftButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
-  function onClick() {
+  async function onClick() {
     if (isPending) return;
-    if (!window.confirm("Apagar este turno? As corridas lançadas também serão removidas.")) return;
+    if (!(await confirmDialog("Apagar este turno? As corridas lançadas também serão removidas."))) return;
     startTransition(async () => {
       const res = await deleteShift(id);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
   return (
@@ -18,7 +19,7 @@ export function DeleteShiftButton({ id }: { id: string }) {
       onClick={onClick}
       disabled={isPending}
       aria-label="Apagar turno"
-      className="rounded-lg px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50"
+      className="grid min-h-[40px] min-w-[36px] place-items-center rounded-lg px-2 text-sm text-danger hover:bg-danger-bg disabled:opacity-50"
     >
       {isPending ? "..." : "✕"}
     </button>
@@ -39,16 +40,16 @@ export function CloseWeekButton({
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
 
-  function onClick() {
+  async function onClick() {
     if (isPending || done) return;
     const msg = `Fechar semana e marcar ${pendingCount} turno(s) pendente(s) como pago(s)?`;
-    if (!window.confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
     startTransition(async () => {
       const fd = new FormData();
       fd.set("week_start", weekStart);
       fd.set("week_end", weekEnd);
       const res = await closeWeek(fd);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
       else setDone(true);
     });
   }

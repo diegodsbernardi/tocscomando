@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
+import { DialogHost } from "@/components/ui/ConfirmDialog";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -24,7 +25,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#14A0DC",
 };
 
@@ -35,7 +35,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${body.variable}`}>
-      <body className="min-h-screen font-sans text-navy">{children}</body>
+      <body className="min-h-screen font-sans text-navy">
+        {children}
+        <DialogHost />
+      </body>
     </html>
   );
 }

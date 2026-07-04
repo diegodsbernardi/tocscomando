@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyDialog } from "@/components/ui/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { toggleEmployeeActive, updateEmployee } from "@/app/extras/funcionarios/actions";
 
@@ -28,7 +29,7 @@ export function EmployeeRow({
       fd.set("name", name);
       fd.set("phone", phone);
       const res = await updateEmployee(fd);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
       else setEditing(false);
     });
   }
@@ -37,7 +38,7 @@ export function EmployeeRow({
     if (isPending) return;
     startTransition(async () => {
       const res = await toggleEmployeeActive(id, !active);
-      if (!res.ok) alert(res.error || "Erro");
+      if (!res.ok) notifyDialog(res.error || "Erro");
     });
   }
 

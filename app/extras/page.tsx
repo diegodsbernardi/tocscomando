@@ -140,7 +140,7 @@ export default async function ExtrasPage({
             <Link
               href={`?mes=${shiftMonth(mes, -1)}&centro=${centro}`}
               aria-label="Mês anterior"
-              className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-sm font-bold"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-base font-bold"
             >
               ‹
             </Link>
@@ -151,12 +151,12 @@ export default async function ExtrasPage({
               <Link
                 href={`?mes=${shiftMonth(mes, 1)}&centro=${centro}`}
                 aria-label="Próximo mês"
-                className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-sm font-bold"
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-base font-bold"
               >
                 ›
               </Link>
             ) : (
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/5 text-sm font-bold opacity-30">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-base font-bold opacity-30">
                 ›
               </span>
             )}
