@@ -162,6 +162,7 @@ async function fetchSalesByPaymentType(page, authHeader) {
     cash_sales: sumWhere(/dinheiro/i),
     card_sales: sumWhere(/cr[eé]d|d[eé]b|cart[aã]o|voucher|vale/i),
     pix_sales: sumWhere(/pix/i),
+    work_date: `${dateBR.slice(6, 10)}-${dateBR.slice(3, 5)}-${dateBR.slice(0, 2)}`,
     raw: { date: dateBR, rows },
   };
 }
@@ -223,7 +224,7 @@ async function main() {
     });
 
     const { error } = await supabase.from("saipos_snapshots").insert({
-      work_date: todayISO(),
+      work_date: sales.work_date,
       drawer_name: null, // consolidado (DLV + LTDA juntos)
       total_sales: sales.total_sales,
       cash_sales: sales.cash_sales,
