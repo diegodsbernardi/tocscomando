@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
+import { DataErrorCard } from "@/components/ui/DataErrorCard";
 import { TopBar } from "@/components/ui/TopBar";
 import { CashMovementForm } from "@/components/CashMovementForm";
 import { CashMovementList, type Movement } from "@/components/CashMovementList";
@@ -65,10 +66,11 @@ export default async function CaixaPage() {
     sessionsQuery = sessionsQuery.eq("drawer_id", scopedDrawerId);
   }
 
-  const [{ data: drawersData }, { data: sessionsData }] = await Promise.all([
-    drawersQuery,
-    sessionsQuery,
-  ]);
+  const [
+    { data: drawersData, error: drawersError },
+    { data: sessionsData, error: sessionsError },
+  ] = await Promise.all([drawersQuery, sessionsQuery]);
+  const loadError = drawersError || sessionsError;
 
   const drawers = (drawersData || []) as Drawer[];
   const sessions = (sessionsData || []) as Session[];
@@ -112,6 +114,7 @@ export default async function CaixaPage() {
       />
 
       <div className="px-4">
+        {loadError && <div className="mb-3"><DataErrorCard /></div>}
         {/* Heros por caixa */}
         <section className="grid gap-3 reveal d2">
           {drawers.map((d) => {

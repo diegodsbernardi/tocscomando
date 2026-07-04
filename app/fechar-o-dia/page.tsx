@@ -6,6 +6,7 @@ import { brl } from "@/lib/format";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { Logo } from "@/components/ui/Logo";
 import { CloseDayFinishButton } from "@/components/CloseDayFinishButton";
+import type { DayTotals } from "@/app/fechar-o-dia/actions";
 import { getCurrentProfile, roleLabel, visibleDrawerFilter } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
@@ -222,12 +223,22 @@ export default async function FecharODiaPage({
       </main>
 
       {/* Footer com nav */}
-      <Footer stepIdx={stepIdx} />
+      <Footer
+        stepIdx={stepIdx}
+        totals={{
+          moto_total: motoTotal,
+          extras_pagos: extrasPagos,
+          extras_pendentes: extrasPendentes,
+          cash_total: cashTotal,
+          cash_diff: cashDiff,
+          card_total: cardTotal,
+        }}
+      />
     </Shell>
   );
 }
 
-function Footer({ stepIdx }: { stepIdx: number }) {
+function Footer({ stepIdx, totals }: { stepIdx: number; totals: DayTotals }) {
   const prev = stepIdx > 0 ? `?passo=${stepIdx - 1}` : null;
   const next = stepIdx < 4 ? `?passo=${stepIdx + 1}` : null;
 
@@ -252,7 +263,7 @@ function Footer({ stepIdx }: { stepIdx: number }) {
             Próximo →
           </Link>
         ) : (
-          <CloseDayFinishButton />
+          <CloseDayFinishButton totals={totals} />
         )}
       </div>
     </div>

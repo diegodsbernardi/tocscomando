@@ -7,6 +7,7 @@ import { MarkPaidToggle, DeleteExtraButton } from "@/components/ExtraRowActions"
 import { brl } from "@/lib/format";
 import { isoWeekRange, isoToday, VINCULO_LIMIT, levelForCount } from "@/lib/vinculo";
 import { getCurrentProfile, roleLabel } from "@/lib/profile";
+import { DataErrorCard } from "@/components/ui/DataErrorCard";
 
 export const dynamic = "force-dynamic";
 
@@ -90,10 +91,10 @@ export default async function ExtrasPage({
     .gte("work_date", week.start)
     .lte("work_date", week.end);
 
-  const [{ data: monthData }, { data: weekData }] = await Promise.all([
-    monthQuery,
-    weekQuery,
-  ]);
+  const [
+    { data: monthData, error: monthError },
+    { data: weekData },
+  ] = await Promise.all([monthQuery, weekQuery]);
 
   let rows = ((monthData || []) as unknown as Row[]).filter((r) => r.employees);
   if (centro !== "todos") {
@@ -190,7 +191,8 @@ export default async function ExtrasPage({
 
         {/* Lista */}
         <div className="mt-4 space-y-3 reveal d4">
-          {days.length === 0 && (
+          {monthError && <DataErrorCard />}
+          {!monthError && days.length === 0 && (
             <p className="rounded-card bg-white p-6 text-center text-sm text-muted shadow-card">
               Nenhum extra neste filtro.
             </p>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteReportButton } from "@/components/DeleteReportButton";
 import { Shell } from "@/components/ui/Shell";
+import { DataErrorCard } from "@/components/ui/DataErrorCard";
 import { TopBar } from "@/components/ui/TopBar";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function HistoricoPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: reports } = await supabase
+  const { data: reports, error: reportsError } = await supabase
     .from("reports")
     .select("id, credito, debito, pix, total, created_at")
     .eq("user_id", user.id)
@@ -59,6 +60,7 @@ export default async function HistoricoPage() {
     <Shell>
       <TopBar title="Relatórios" subtitle="cupons de hoje" backHref="/" />
       <div className="px-4">
+        {reportsError && <div className="mb-3"><DataErrorCard /></div>}
 
       <section className="mb-6 mt-2 space-y-2 rounded-2xl bg-white p-5 shadow">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">

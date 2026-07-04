@@ -5,6 +5,7 @@ import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { startOfTuesdayWeek, endOfTuesdayWeek, todayISO, formatDateBR } from "@/lib/week";
 import { CloseWeekButton, DeleteShiftButton } from "@/components/MotoboyShiftActions";
 import { Shell } from "@/components/ui/Shell";
+import { DataErrorCard } from "@/components/ui/DataErrorCard";
 import { TopBar } from "@/components/ui/TopBar";
 import { canSeeMotoboys, getCurrentProfile, roleLabel } from "@/lib/profile";
 
@@ -58,7 +59,7 @@ export default async function MotoboysPage({
   const weekEnd = endOfTuesdayWeek(refDate);
   const today = todayISO();
 
-  const [{ data: shiftsData }, { data: motoboysData }] = await Promise.all([
+  const [{ data: shiftsData, error: shiftsError }, { data: motoboysData }] = await Promise.all([
     supabase
       .from("motoboy_shifts")
       .select("id, motoboy_id, work_date, arrival_time, paid, notes, motoboys(id, name), motoboy_shift_rides(rides_count, fee_at_time)")
@@ -167,6 +168,7 @@ export default async function MotoboysPage({
         }
       />
       <div className="px-4">
+        {shiftsError && <div className="mb-3"><DataErrorCard /></div>}
 
       {/* Hoje */}
       <section className="mb-4 rounded-hero bg-cyan-hero p-5 text-white shadow-glow reveal d2">
