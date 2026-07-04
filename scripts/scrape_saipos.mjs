@@ -122,6 +122,16 @@ async function selectStore(page) {
   }
 }
 
+async function gotoSalesDashboard(page) {
+  // Painel "Acompanhamento de vendas" — mostra o dia corrente ao vivo
+  console.log("[saipos] abrindo acompanhamento de vendas");
+  await page.goto(`${BASE_URL}/#/app/dashboard/sales-tracking`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60000,
+  });
+  await page.waitForTimeout(8000); // SPA: espera os cards carregarem
+}
+
 async function extractSales(page) {
   // Tenta extrair os valores de venda do dia.
   // Se algum seletor falhar, retorna null pro campo (snapshot ainda é gravado pra debug).
@@ -175,6 +185,7 @@ async function main() {
   try {
     await login(page);
     await selectStore(page);
+    await gotoSalesDashboard(page);
     const sales = await extractSales(page);
     console.log("[saipos] vendas extraídas:", {
       total: sales.total_sales,
