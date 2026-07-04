@@ -182,6 +182,21 @@ async function main() {
   });
   const page = await context.newPage();
 
+  // No DRY_RUN, sniffa as respostas JSON da API pra mapear os endpoints de vendas
+  const apiHits = [];
+  if (DRY_RUN) {
+    page.on("response", async (res) => {
+      try {
+        const ct = res.headers()["content-type"] || "";
+        const url = res.url();
+        if (ct.includes("json") && !/importmap|manifest|\.js/i.test(url)) {
+          const body = await res.text();
+          apiHits.push(`${res.status()} ${url.replace(/^https?:\/\//, "")} :: ${body.slice(0, 400)}`);
+        }
+      } catch {}
+    });
+  }
+
   try {
     await login(page);
     await selectStore(page);
@@ -197,15 +212,9 @@ async function main() {
     if (DRY_RUN) {
       console.log("[saipos] DRY_RUN — não gravando no banco");
       console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 2000));
-      // abre o menu lateral e lista todas as rotas visíveis no DOM
-      await page.locator("md-toolbar button, header button, .md-toolbar-tools button").first().click().catch(() => {});
-      await page.waitForTimeout(2000);
-      const links = await page.evaluate(() =>
-        [...document.querySelectorAll("a[href]")]
-          .map((a) => `${a.getAttribute("href")} :: ${a.textContent.trim().replace(/\s+/g, " ").slice(0, 60)}`)
-          .filter((s) => s.includes("#/app"))
-      );
-      console.log("[saipos] rotas encontradas:\n" + links.join("\n"));
+      // dump das respostas JSON da API vistas na sessão (últimas 40)
+      console.log(`[saipos] ${apiHits.length} respostas JSON capturadas:`);
+      for (const h of apiHits.slice(-40)) console.log("[saipos:api] " + h);
       // screenshot da tela pós-login pra calibrar seletores
       await page.screenshot({ path: "saipos-error.png", fullPage: true });
       console.log("[saipos] screenshot pós-login salvo (artifact)");
