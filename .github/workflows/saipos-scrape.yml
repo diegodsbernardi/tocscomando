@@ -13,6 +13,10 @@ on:
         description: "Rodar em DRY_RUN (não grava no banco)"
         type: boolean
         default: false
+      date:
+        description: "Data DD/MM/YYYY (opcional, default hoje)"
+        type: string
+        required: false
 
 jobs:
   scrape:
@@ -57,6 +61,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DRY_RUN: ${{ inputs.dry_run == true && '1' || '' }}
+          SAIPOS_DATE: ${{ inputs.date }}
         run: node scripts/scrape_saipos.mjs
 
       - name: Upload error screenshot

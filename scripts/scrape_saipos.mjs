@@ -126,8 +126,9 @@ async function fetchSalesByPaymentType(page, authHeader) {
   // Chama a API interna do Saipos (mesma do relatório "Vendas por forma de
   // pagamento") com a data de hoje. Retorna uma linha por forma de pagamento:
   // { desc_store_payment_type, total_value, count_payments, total_saled, count_sales }
+  // SAIPOS_DATE (DD/MM/YYYY) força uma data específica — útil pra teste
   const [y, m, d] = todayISO().split("-");
-  const dateBR = `${d}/${m}/${y}`;
+  const dateBR = process.env.SAIPOS_DATE || `${d}/${m}/${y}`;
   const filter = encodeURIComponent(
     JSON.stringify({
       start_date: dateBR,
