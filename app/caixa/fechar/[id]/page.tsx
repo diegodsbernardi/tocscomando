@@ -6,7 +6,7 @@ import { CashCloseForm } from "@/components/CashCloseForm";
 import { CashMovementForm } from "@/components/CashMovementForm";
 import { CashMovementList, type Movement } from "@/components/CashMovementList";
 import { closeSession } from "../../actions";
-import { getLatestSaiposSnapshot } from "@/lib/saipos";
+import { getSaiposSuggestion } from "@/lib/saipos";
 import { brl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -60,11 +60,10 @@ export default async function FecharCaixaPage({
   const ins = movs.filter((m) => m.direction === "in").reduce((s, m) => s + m.amount, 0);
   const outs = movs.filter((m) => m.direction === "out").reduce((s, m) => s + m.amount, 0);
 
-  // Tenta puxar snapshot do Saipos pra esse caixa, fallback no consolidado
-  const drawerSnapshot = await getLatestSaiposSnapshot(drawerNameRaw);
-  const fallbackSnapshot = drawerSnapshot ?? (await getLatestSaiposSnapshot(null));
-  const suggestedCashSales = fallbackSnapshot?.cash_sales ?? null;
-  const saiposCapturedAt = fallbackSnapshot?.captured_at ?? null;
+  // Vendas do dia no Saipos: soma o snapshot mais recente de cada loja (2 CNPJs)
+  const saipos = await getSaiposSuggestion();
+  const suggestedCashSales = saipos?.cash_sales ?? null;
+  const saiposCapturedAt = saipos?.captured_at ?? null;
 
   return (
     <Shell>

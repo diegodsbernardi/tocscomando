@@ -26,8 +26,9 @@ const PASS = process.env.SAIPOS_PASS;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DRY_RUN = process.env.DRY_RUN === "1";
-// Loja ativa do TOCS no Saipos (49897 é o CNPJ novo, "Em implantação")
-const STORE_ID = process.env.SAIPOS_STORE_ID || "49895";
+// Lojas do TOCS no Saipos: 49895 = CNPJ antigo (Ativo), 49897 = CNPJ novo (Em implantação).
+// Um snapshot por loja por captura; drawer_name identifica a loja.
+const STORE_IDS = (process.env.SAIPOS_STORE_IDS || "49895,49897").split(",").map((s) => s.trim());
 
 // Selectors — ajustar quando confirmar a estrutura real do Saipos
 const SAIPOS_SELECTORS = {
@@ -107,13 +108,14 @@ async function login(page) {
 
 async function selectStore(page) {
   // Pós-login cai em "Selecione a loja" (tabela com botão-seta por linha).
-  let row = page.locator(`tr:has-text("${STORE_ID}")`).first();
+  // Qualquer loja serve — é só pra validar a sessão; a extração é via API por loja.
+  let row = page.locator(`tr:has-text("${STORE_IDS[0]}")`).first();
   if (!(await row.count())) {
     // fallback: a linha da loja com status "Ativo"
     row = page.locator('tr:has-text("Ativo")').first();
   }
   if (await row.count()) {
-    console.log(`[saipos] selecionando loja ${STORE_ID}`);
+    console.log(`[saipos] selecionando loja ${STORE_IDS[0]}`);
     await row.locator("button").first().click();
     await page.waitForTimeout(6000);
     console.log(`[saipos] URL pós-loja: ${page.url()}`);
@@ -122,7 +124,7 @@ async function selectStore(page) {
   }
 }
 
-async function fetchSalesByPaymentType(page, authHeader) {
+async function fetchSalesByPaymentType(page, authHeader, storeId) {
   // Chama a API interna do Saipos (mesma do relatório "Vendas por forma de
   // pagamento") com a data de hoje. Retorna uma linha por forma de pagamento:
   // { desc_store_payment_type, total_value, count_payments, total_saled, count_sales }
@@ -140,8 +142,8 @@ async function fetchSalesByPaymentType(page, authHeader) {
       id_user_stores: null,
     })
   );
-  const url = `https://api.saipos.com/v1/stores/${STORE_ID}/sales-by-payment-type?filter=${filter}`;
-  console.log(`[saipos] consultando vendas de ${dateBR} via API`);
+  const url = `https://api.saipos.com/v1/stores/${storeId}/sales-by-payment-type?filter=${filter}`;
+  console.log(`[saipos] loja ${storeId}: consultando vendas de ${dateBR} via API`);
   const res = await page.request.get(url, {
     headers: { authorization: authHeader },
     timeout: 30000,
@@ -205,40 +207,55 @@ async function main() {
       await page.waitForTimeout(5000); // dá tempo do app chamar a API e revelar o token
     }
     if (!authHeader) throw new Error("não capturei o Authorization da sessão");
-    const sales = await fetchSalesByPaymentType(page, authHeader);
-    console.log("[saipos] vendas extraídas:", {
-      total: sales.total_sales,
-      cash: sales.cash_sales,
-      card: sales.card_sales,
-      pix: sales.pix_sales,
-    });
 
-    if (DRY_RUN) {
-      console.log("[saipos] DRY_RUN — não gravando no banco");
-      console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 3000));
-      return;
+    const supabase = DRY_RUN
+      ? null
+      : createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+    let okCount = 0;
+    for (const storeId of STORE_IDS) {
+      // Falha em uma loja (ex: 49897 em implantação) não derruba a captura das outras
+      let sales;
+      try {
+        sales = await fetchSalesByPaymentType(page, authHeader, storeId);
+      } catch (e) {
+        console.warn(`[saipos] loja ${storeId} falhou: ${e.message} — seguindo`);
+        continue;
+      }
+      console.log(`[saipos] loja ${storeId} vendas extraídas:`, {
+        total: sales.total_sales,
+        cash: sales.cash_sales,
+        card: sales.card_sales,
+        pix: sales.pix_sales,
+      });
+
+      if (DRY_RUN) {
+        console.log(`[saipos] DRY_RUN — não gravando (loja ${storeId})`);
+        console.log("[saipos] raw:", JSON.stringify(sales.raw).slice(0, 2000));
+        okCount++;
+        continue;
+      }
+
+      const { error } = await supabase.from("saipos_snapshots").insert({
+        work_date: sales.work_date,
+        drawer_name: storeId, // identifica a loja Saipos deste snapshot
+        total_sales: sales.total_sales,
+        cash_sales: sales.cash_sales,
+        card_sales: sales.card_sales,
+        pix_sales: sales.pix_sales,
+        source: "scrape",
+        raw: sales.raw,
+      });
+
+      if (error) {
+        console.error(`[saipos] loja ${storeId} erro ao gravar: ${error.message}`);
+        continue;
+      }
+      console.log(`[saipos] loja ${storeId} snapshot gravado ✓`);
+      okCount++;
     }
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
-      auth: { persistSession: false },
-    });
-
-    const { error } = await supabase.from("saipos_snapshots").insert({
-      work_date: sales.work_date,
-      drawer_name: null, // consolidado (DLV + LTDA juntos)
-      total_sales: sales.total_sales,
-      cash_sales: sales.cash_sales,
-      card_sales: sales.card_sales,
-      pix_sales: sales.pix_sales,
-      source: "scrape",
-      raw: sales.raw,
-    });
-
-    if (error) {
-      console.error("[saipos] erro ao gravar:", error.message);
-      process.exit(1);
-    }
-    console.log("[saipos] snapshot gravado ✓");
+    if (okCount === 0) throw new Error("nenhuma loja capturada com sucesso");
   } catch (e) {
     console.error("[saipos] falhou:", e.message);
     // Salva screenshot pra debug

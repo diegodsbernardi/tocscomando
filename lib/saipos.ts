@@ -12,31 +12,58 @@ export type SaiposSnapshot = {
   pix_sales: number | null;
 };
 
+export type SaiposSuggestion = {
+  captured_at: string; // captura mais antiga entre as lojas somadas
+  total_sales: number;
+  cash_sales: number;
+  card_sales: number;
+  pix_sales: number;
+  stores: string[]; // drawer_name (id da loja Saipos) de cada snapshot somado
+};
+
 /**
- * Pega o snapshot mais recente do dia atual.
- * Pode filtrar por drawer ('DLV' / 'LTDA') ou retornar consolidado (drawer_name null).
+ * Sugestão de vendas do dia: soma o snapshot mais recente de CADA loja Saipos
+ * (um snapshot por loja por captura; drawer_name = id da loja, ex: "49895").
  */
-export const getLatestSaiposSnapshot = cache(
-  async (
-    drawerName: string | null = null,
-  ): Promise<SaiposSnapshot | null> => {
+export const getSaiposSuggestion = cache(
+  async (): Promise<SaiposSuggestion | null> => {
     const supabase = createClient();
-    const today = todayISO();
-    let q = supabase
+    const { data } = await supabase
       .from("saipos_snapshots")
       .select("id, captured_at, work_date, drawer_name, total_sales, cash_sales, card_sales, pix_sales")
-      .eq("work_date", today)
-      .order("captured_at", { ascending: false })
-      .limit(1);
+      .eq("work_date", todayISO())
+      .order("captured_at", { ascending: false });
 
-    if (drawerName) q = q.eq("drawer_name", drawerName);
+    const rows = (data as SaiposSnapshot[] | null) ?? [];
+    if (rows.length === 0) return null;
 
-    const { data } = await q.maybeSingle();
-    return (data as SaiposSnapshot | null) ?? null;
+    // mais recente por loja (rows já vêm em ordem decrescente de captured_at)
+    const latestByStore = new Map<string, SaiposSnapshot>();
+    for (const r of rows) {
+      const key = r.drawer_name ?? "consolidado";
+      if (!latestByStore.has(key)) latestByStore.set(key, r);
+    }
+
+    const picked = Array.from(latestByStore.values());
+    const sum = (f: (s: SaiposSnapshot) => number | null) =>
+      picked.reduce((acc, s) => acc + (Number(f(s)) || 0), 0);
+
+    return {
+      captured_at: picked.reduce(
+        (min, s) => (s.captured_at < min ? s.captured_at : min),
+        picked[0].captured_at,
+      ),
+      total_sales: sum((s) => s.total_sales),
+      cash_sales: sum((s) => s.cash_sales),
+      card_sales: sum((s) => s.card_sales),
+      pix_sales: sum((s) => s.pix_sales),
+      stores: picked.map((s) => s.drawer_name ?? "consolidado"),
+    };
   },
 );
 
 function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Dia de trabalho no fuso do restaurante — o server (Vercel) roda em UTC,
+  // e depois das 21h BRT já é "amanhã" em UTC.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
