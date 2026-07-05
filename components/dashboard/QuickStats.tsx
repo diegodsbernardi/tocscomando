@@ -15,7 +15,6 @@ export async function QuickStats() {
   const { data } = await supabase
     .from("reports")
     .select("total")
-    .eq("user_id", user.id)
     .gte("created_at", startOfDayISO());
 
   const list = data || [];

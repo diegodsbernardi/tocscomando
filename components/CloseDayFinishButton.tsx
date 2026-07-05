@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { closeDay, type DayTotals } from "@/app/fechar-o-dia/actions";
+import { closeDay } from "@/app/fechar-o-dia/actions";
 import { notifyDialog } from "@/components/ui/ConfirmDialog";
 
-export function CloseDayFinishButton({ totals }: { totals: DayTotals }) {
+export function CloseDayFinishButton() {
   const router = useRouter();
   const [done, setDone] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -13,7 +13,7 @@ export function CloseDayFinishButton({ totals }: { totals: DayTotals }) {
   function finish() {
     if (done || isPending) return;
     startTransition(async () => {
-      const res = await closeDay(totals);
+      const res = await closeDay();
       if (!res.ok) {
         notifyDialog(res.error || "Erro ao fechar o dia");
         return;

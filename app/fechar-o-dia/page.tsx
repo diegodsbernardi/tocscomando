@@ -3,12 +3,12 @@ import { startOfDayISO as spStartOfDay } from "@/lib/dates";
 import { todayISO as spToday } from "@/lib/dates";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDayData } from "@/lib/day-totals";
 import { Shell } from "@/components/ui/Shell";
 import { brl } from "@/lib/format";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { Logo } from "@/components/ui/Logo";
 import { CloseDayFinishButton } from "@/components/CloseDayFinishButton";
-import type { DayTotals } from "@/app/fechar-o-dia/actions";
 import { getCurrentProfile, roleLabel, visibleDrawerFilter } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
@@ -80,68 +80,18 @@ export default async function FecharODiaPage({
   const scopedDrawerId = visibleDrawerFilter(profile);
 
   const stepIdx = Math.max(0, Math.min(4, parseInt(searchParams.passo || "0", 10) || 0));
-  const today = todayISO();
 
-  let sessionsQuery = supabase
-    .from("cash_sessions")
-    .select("id, drawer_id, opening_amount, closing_amount, expected_amount, status, cash_drawers(name)")
-    .eq("work_date", today);
-  if (scopedDrawerId) sessionsQuery = sessionsQuery.eq("drawer_id", scopedDrawerId);
-
-  // Carrega tudo em paralelo
-  const [
-    { data: shiftsRaw },
-    { data: extrasRaw },
-    { data: sessionsRaw },
-    { data: reportsRaw },
-  ] = await Promise.all([
-    supabase
-      .from("motoboy_shifts")
-      .select("id, motoboy_id, motoboys(name), motoboy_shift_rides(rides_count, fee_at_time)")
-      .eq("work_date", today),
-    supabase
-      .from("extra_payments")
-      .select("id, amount, paid, employees(name, centro_custo)")
-      .eq("work_date", today),
-    sessionsQuery,
-    supabase
-      .from("reports")
-      .select("id, credito, debito, pix, total, created_at")
-      .eq("user_id", user.id)
-      .gte("created_at", startOfDayISO()),
-  ]);
-
-  const shifts = (shiftsRaw || []) as unknown as Shift[];
-  const extras = (extrasRaw || []) as unknown as Extra[];
-  const sessions = (sessionsRaw || []) as unknown as Session[];
-  const reports = (reportsRaw || []) as Report[];
-
-  // Cálculos
-  const motoTotal = shifts.reduce((acc, s) => {
-    const raw = s.motoboy_shift_rides.reduce(
-      (a, r) => a + Number(r.rides_count) * Number(r.fee_at_time),
-      0,
-    );
-    return acc + Math.max(raw, MIN_DAILY_PAYMENT);
-  }, 0);
-
-  const extrasPagos = extras.filter((e) => e.paid).reduce((a, e) => a + Number(e.amount), 0);
-  const extrasPendentes = extras.filter((e) => !e.paid).reduce((a, e) => a + Number(e.amount), 0);
-
-  const cashClosed = sessions.filter((s) => s.status === "closed");
-  const cashTotal = cashClosed.reduce((a, s) => a + Number(s.closing_amount ?? 0), 0);
-  const cashDiff = cashClosed.reduce(
-    (a, s) =>
-      s.expected_amount != null && s.closing_amount != null
-        ? a + (Number(s.closing_amount) - Number(s.expected_amount))
-        : a,
-    0,
-  );
-
-  const cardTotal = reports.reduce(
-    (a, r) => a + Number(r.credito) + Number(r.debito) + Number(r.pix),
-    0,
-  );
+  // Fonte única dos dados/totais do dia (lib/day-totals) — a tela mostra o
+  // escopo do perfil; a action closeDay recalcula global no server.
+  const { shifts, extras, sessions, reports, totals } = await getDayData(scopedDrawerId);
+  const {
+    moto_total: motoTotal,
+    extras_pagos: extrasPagos,
+    extras_pendentes: extrasPendentes,
+    cash_total: cashTotal,
+    cash_diff: cashDiff,
+    card_total: cardTotal,
+  } = totals;
 
   return (
     <Shell>
@@ -217,28 +167,18 @@ export default async function FecharODiaPage({
             cashTotal={cashTotal}
             cashDiff={cashDiff}
             cardTotal={cardTotal}
-            cashClosedCount={cashClosed.length}
+            cashClosedCount={sessions.filter((s) => s.status === "closed").length}
           />
         )}
       </main>
 
       {/* Footer com nav */}
-      <Footer
-        stepIdx={stepIdx}
-        totals={{
-          moto_total: motoTotal,
-          extras_pagos: extrasPagos,
-          extras_pendentes: extrasPendentes,
-          cash_total: cashTotal,
-          cash_diff: cashDiff,
-          card_total: cardTotal,
-        }}
-      />
+      <Footer stepIdx={stepIdx} />
     </Shell>
   );
 }
 
-function Footer({ stepIdx, totals }: { stepIdx: number; totals: DayTotals }) {
+function Footer({ stepIdx }: { stepIdx: number }) {
   const prev = stepIdx > 0 ? `?passo=${stepIdx - 1}` : null;
   const next = stepIdx < 4 ? `?passo=${stepIdx + 1}` : null;
 
@@ -263,7 +203,7 @@ function Footer({ stepIdx, totals }: { stepIdx: number; totals: DayTotals }) {
             Próximo →
           </Link>
         ) : (
-          <CloseDayFinishButton totals={totals} />
+          <CloseDayFinishButton />
         )}
       </div>
     </div>

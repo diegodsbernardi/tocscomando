@@ -17,7 +17,6 @@ export async function deleteReport(id: string) {
     .from("reports")
     .select("image_path")
     .eq("id", id)
-    .eq("user_id", user.id)
     .maybeSingle();
 
   if (fetchErr || !report) {

@@ -38,7 +38,6 @@ export default async function HistoricoPage() {
   const { data: reports, error: reportsError } = await supabase
     .from("reports")
     .select("id, credito, debito, pix, total, created_at")
-    .eq("user_id", user.id)
     .gte("created_at", startOfDayISO())
     .order("created_at", { ascending: false });
 

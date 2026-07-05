@@ -16,7 +16,6 @@ export async function TodayHero() {
   const { data } = await supabase
     .from("reports")
     .select("credito, debito, pix, total")
-    .eq("user_id", user.id)
     .gte("created_at", startOfDayISO());
 
   const list = data || [];
