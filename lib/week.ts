@@ -1,3 +1,4 @@
+import { todayISO as spToday } from "./dates";
 // Semana operacional do TOCS: começa terça-feira (depois da folga de segunda).
 // Funções pra calcular start/end da semana de uma data ISO.
 
@@ -26,8 +27,7 @@ export function endOfTuesdayWeek(iso: string): string {
 }
 
 export function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 export function formatDateBR(iso: string, opts?: Intl.DateTimeFormatOptions): string {

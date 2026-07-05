@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { todayISO as spToday } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
@@ -40,8 +41,7 @@ function relativeWeekLabel(weekStart: string, todayWeekStart: string): string {
 }
 
 function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 export default async function PerfilExtraPage({

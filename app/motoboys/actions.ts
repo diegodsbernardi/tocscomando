@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { todayISO as spToday } from "@/lib/dates";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 // ---------- TURNO ----------

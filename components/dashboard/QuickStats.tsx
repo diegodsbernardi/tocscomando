@@ -1,11 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { startOfDayISO as spStartOfDay } from "@/lib/dates";
 import { getAuthUser } from "@/lib/profile";
 import { brl } from "@/lib/format";
 
 function startOfDayISO() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return spStartOfDay();
 }
 
 export async function QuickStats() {

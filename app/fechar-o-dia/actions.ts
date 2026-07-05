@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { todayISO } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/profile";
 
@@ -13,9 +14,7 @@ export type DayTotals = {
   card_total: number;
 };
 
-function todayISO(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-}
+
 
 /**
  * Grava (ou atualiza) o fechamento do dia em day_closures.

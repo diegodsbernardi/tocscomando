@@ -1,3 +1,4 @@
+import { todayISO as spToday } from "./dates";
 // Regras de "vínculo empregatício" — alertam quando uma pessoa
 // vem como extra muitas vezes na mesma semana corrida (seg–dom).
 
@@ -27,6 +28,5 @@ export function isoWeekRange(iso: string): { start: string; end: string } {
 }
 
 export function isoToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }

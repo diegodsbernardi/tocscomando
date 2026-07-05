@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { todayISO } from "@/lib/dates";
 import { createHash } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
     }
 
     const extracted = parseResponse(textBlock.text);
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const today = todayISO();
     const signature = computeSignature(user.id, extracted, today);
 
     // Verifica duplicata antes de devolver pro client

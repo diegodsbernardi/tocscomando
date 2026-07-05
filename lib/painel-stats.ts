@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { todayISO as spToday, toSPDate } from "./dates";
 import { createClient } from "@/lib/supabase/server";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { startOfTuesdayWeek, endOfTuesdayWeek } from "@/lib/week";
@@ -32,8 +33,7 @@ export type PainelData = {
 };
 
 function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 function isoDate(d: Date): string {
@@ -133,8 +133,7 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
   let monthFaturamento = 0;
 
   for (const r of reports) {
-    const date = new Date(r.created_at);
-    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const iso = toSPDate(r.created_at);
     const total = Number(r.total) || 0;
     dayTotal.set(iso, (dayTotal.get(iso) ?? 0) + total);
     dayCupons.set(iso, (dayCupons.get(iso) ?? 0) + 1);

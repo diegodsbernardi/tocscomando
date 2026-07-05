@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { currentMonth as spCurrentMonth } from "@/lib/dates";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
@@ -24,8 +25,7 @@ type Row = {
 };
 
 function currentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return spCurrentMonth();
 }
 
 function monthRange(ym: string) {

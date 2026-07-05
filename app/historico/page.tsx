@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { startOfDayISO as spStartOfDay } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteReportButton } from "@/components/DeleteReportButton";
 import { Shell } from "@/components/ui/Shell";
@@ -24,9 +25,7 @@ function brl(n: number) {
 }
 
 function startOfDayISO() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return spStartOfDay();
 }
 
 export default async function HistoricoPage() {

@@ -1,4 +1,5 @@
 import { MIN_DAILY_PAYMENT } from "./motoboys";
+import { todayISO as spToday } from "./dates";
 
 export type RawShift = {
   id: string;
@@ -110,8 +111,7 @@ export function verdictFor(agg: AggregateStats, scope: "dia" | "semana" | "mes")
 
 // ---------- Date helpers ----------
 export function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 export function monthRange(iso: string): { start: string; end: string } {

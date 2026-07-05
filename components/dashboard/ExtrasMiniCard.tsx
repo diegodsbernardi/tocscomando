@@ -1,20 +1,20 @@
 import Link from "next/link";
+import { currentMonth } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/profile";
 import { brl } from "@/lib/format";
 
 function monthRange() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const start = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-  const next = new Date(y, m + 1, 1);
+  const [y, m] = currentMonth().split("-").map(Number);
+  const start = `${y}-${String(m).padStart(2, "0")}-01`;
+  const next = new Date(y, m, 1);
   const end = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`;
   return { start, end };
 }
 
 function monthLabel() {
-  return new Date().toLocaleDateString("pt-BR", { month: "long" });
+  const [y, m] = currentMonth().split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
 }
 
 export async function ExtrasMiniCard() {

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { todayISO } from "./dates";
 import { createClient } from "@/lib/supabase/server";
 
 export type SaiposSnapshot = {
@@ -61,9 +62,3 @@ export const getSaiposSuggestion = cache(
     };
   },
 );
-
-function todayISO(): string {
-  // Dia de trabalho no fuso do restaurante — o server (Vercel) roda em UTC,
-  // e depois das 21h BRT já é "amanhã" em UTC.
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-}

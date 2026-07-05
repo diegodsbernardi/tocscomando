@@ -109,6 +109,7 @@ export default async function CaixaPage() {
           weekday: "short",
           day: "2-digit",
           month: "long",
+          timeZone: "America/Sao_Paulo",
         })}
         role={roleLabel(profile)}
       />

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { startOfDayISO as spStartOfDay } from "@/lib/dates";
+import { todayISO as spToday } from "@/lib/dates";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
@@ -20,14 +22,11 @@ const STEPS = [
 ] as const;
 
 function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return spToday();
 }
 
 function startOfDayISO() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return spStartOfDay();
 }
 
 const DRAWER_LABEL: Record<string, string> = {
@@ -157,6 +156,7 @@ export default async function FecharODiaPage({
                 weekday: "short",
                 day: "2-digit",
                 month: "long",
+                timeZone: "America/Sao_Paulo",
               })}
             </small>
           </div>
