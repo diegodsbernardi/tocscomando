@@ -14,7 +14,7 @@
 
 - [x] **1. Aviso de dia não fechado** (pequeno) — 2026-07-06
 - [x] **2. Alerta de quebra de caixa recorrente** (pequeno) — 2026-07-06
-- [ ] **3. Relatório semanal pronto pro WhatsApp** (médio — maior impacto pro Diego)
+- [x] **3. Relatório semanal pronto pro WhatsApp** (médio — maior impacto pro Diego) — 2026-07-06
 - [x] **4. DRE simplificado do mês no painel** (médio) — 2026-07-06
 - [x] **5. Comparativo de vendas por dia da semana** (médio) — 2026-07-06
 - [ ] **6. Contagem por cédula também na abertura** (pequeno)

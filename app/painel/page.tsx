@@ -264,6 +264,7 @@ export default async function PainelPage() {
           Ir mais fundo
         </h3>
         <div className="grid grid-cols-2 gap-2 reveal d5">
+          <Atalho href="/relatorio-semanal" label="Relatório semanal" hint="WhatsApp" />
           <Atalho href="/motoboys/historico" label="Entregas" hint="análise" />
           <Atalho href="/caixa" label="Caixa" hint="sessões" />
           <Atalho href="/extras" label="Extras" hint="freelancers" />
