@@ -8,6 +8,7 @@ import { getCurrentProfile, roleLabel } from "@/lib/profile";
 import { getPainelData, type DayPoint } from "@/lib/painel-stats";
 import { getCashAlerts, DIAS_RECORRENTE, type DrawerAlert } from "@/lib/cash-alerts";
 import { getSemanaData, SEMANAS_LOOKBACK, type WeekdayAvg } from "@/lib/semana-stats";
+import { getSangriaDestinos } from "@/lib/sangria-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,11 @@ export default async function PainelPage() {
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "admin") redirect("/");
 
-  const [d, cashAlerts, semana] = await Promise.all([
+  const [d, cashAlerts, semana, sangrias] = await Promise.all([
     getPainelData(),
     getCashAlerts(),
     getSemanaData(),
+    getSangriaDestinos(),
   ]);
   const split = brlSplit(d.weekFaturamento);
   const deltaTone =
@@ -188,6 +190,40 @@ export default async function PainelPage() {
                 período).
               </p>
             )}
+          </section>
+        )}
+
+        {/* SANGRIAS POR DESTINO */}
+        {!sangrias.error && sangrias.destinos.length > 0 && (
+          <section className="mt-2.5 rounded-card bg-white p-4 shadow-card reveal d4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-[0.5px] text-muted">
+                Sangrias por destino · {d.monthLabel}
+              </span>
+              <span className="font-display text-sm font-extrabold tabular-nums text-navy">
+                {brl(sangrias.total)}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {sangrias.destinos.map((s) => (
+                <div
+                  key={s.destino}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="font-semibold text-navy">{s.destino}</span>
+                  <span className="tabular-nums font-bold text-navy">
+                    {brl(s.total)}{" "}
+                    <span className="text-[11px] font-normal text-muted">
+                      · {s.count}x
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-muted">
+              Saídas de gaveta do mês (sem troco entre caixas). &quot;Sem
+              destino&quot; = registrado antes do campo existir.
+            </p>
           </section>
         )}
 
