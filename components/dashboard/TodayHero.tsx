@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { startOfDayISO as spStartOfDay } from "@/lib/dates";
+import { startOfDayISO as spStartOfDay, todayISO } from "@/lib/dates";
 import { getAuthUser } from "@/lib/profile";
 import { brl, brlSplit } from "@/lib/format";
 import { getDailyRevenueGoal } from "@/lib/settings";
@@ -12,7 +12,7 @@ function startOfDayISO() {
 const TOLERANCIA_CONFERENCIA = 5; // R$ — diferença aceitável entre cupons e Saipos
 
 export async function TodayHero() {
-  const [user, metaDia, saipos, reportsRes] = await Promise.all([
+  const [user, metaDia, saipos, reportsRes, closureRes] = await Promise.all([
     getAuthUser(),
     getDailyRevenueGoal(),
     getSaiposSuggestion(),
@@ -20,8 +20,24 @@ export async function TodayHero() {
       .from("reports")
       .select("credito, debito, pix, total")
       .gte("created_at", startOfDayISO()),
+    createClient()
+      .from("day_closures")
+      .select("updated_at, closed_by_name")
+      .eq("work_date", todayISO())
+      .limit(1),
   ]);
   if (!user) return null;
+
+  const closure = closureRes.data?.[0] as
+    | { updated_at: string; closed_by_name: string | null }
+    | undefined;
+  const horaFechamento = closure
+    ? new Date(closure.updated_at).toLocaleTimeString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   const list = reportsRes.data || [];
   const totals = list.reduce(
@@ -113,6 +129,13 @@ export async function TodayHero() {
         <small className="mt-3 block text-[11px] opacity-70">
           fonte: cupons fotografados (Saipos ativo 19h–23h30)
         </small>
+      )}
+
+      {closure && (
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.14] px-3 py-1.5 text-[11px] font-semibold">
+          <span className="text-ok">✓</span> dia fechado às {horaFechamento}
+          {closure.closed_by_name ? ` por ${closure.closed_by_name}` : ""}
+        </div>
       )}
     </section>
   );

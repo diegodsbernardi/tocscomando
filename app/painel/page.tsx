@@ -269,6 +269,7 @@ export default async function PainelPage() {
           <Atalho href="/caixa" label="Caixa" hint="sessões" />
           <Atalho href="/extras" label="Extras" hint="freelancers" />
           <Atalho href="/historico" label="Cupons" hint="hoje" />
+          <Atalho href="/fechamentos" label="Fechamentos" hint="histórico" />
         </div>
       </div>
     </Shell>
