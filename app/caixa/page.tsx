@@ -7,6 +7,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { CashMovementForm } from "@/components/CashMovementForm";
 import { CashMovementList, type Movement } from "@/components/CashMovementList";
 import { ReopenButton, DeleteSessionButton } from "@/components/CashSessionActions";
+import { CashBreakdownDetails, type Breakdown } from "@/components/CashBreakdown";
 import { brl } from "@/lib/format";
 import { getCurrentProfile, visibleDrawerFilter, roleLabel } from "@/lib/profile";
 
@@ -25,6 +26,8 @@ type Session = {
   expected_amount: number | null;
   notes: string | null;
   status: "open" | "closed";
+  opening_breakdown: Breakdown;
+  closing_breakdown: Breakdown;
 };
 
 function timeBR(iso: string) {
@@ -56,7 +59,7 @@ export default async function CaixaPage() {
   let drawersQuery = supabase.from("cash_drawers").select("id, name").eq("active", true).order("name");
   let sessionsQuery = supabase
     .from("cash_sessions")
-    .select("id, drawer_id, work_date, opened_at, opening_amount, closed_at, closing_amount, expected_amount, notes, status")
+    .select("id, drawer_id, work_date, opened_at, opening_amount, closed_at, closing_amount, expected_amount, notes, status, opening_breakdown, closing_breakdown")
     .order("work_date", { ascending: false })
     .order("opened_at", { ascending: false })
     .limit(40);
@@ -151,6 +154,12 @@ export default async function CaixaPage() {
                         · entradas <span className="font-bold text-ok">+{brl(ins)}</span>
                       </p>
                     )}
+                    <div className="mx-auto max-w-xs text-left">
+                      <CashBreakdownDetails
+                        breakdown={open.opening_breakdown}
+                        label="Ver contagem da abertura"
+                      />
+                    </div>
                     <Link
                       href={`/caixa/fechar/${open.id}`}
                       className="mt-3 block rounded-2xl bg-navy py-3 text-sm font-bold text-white"
@@ -261,6 +270,14 @@ export default async function CaixaPage() {
                       {s.notes && (
                         <p className="mt-1 text-[11px] text-muted">{s.notes}</p>
                       )}
+                      <CashBreakdownDetails
+                        breakdown={s.opening_breakdown}
+                        label="Contagem da abertura"
+                      />
+                      <CashBreakdownDetails
+                        breakdown={s.closing_breakdown}
+                        label="Contagem do fechamento"
+                      />
                     </div>
                     <div className="flex items-center gap-1">
                       <ReopenButton id={s.id} />

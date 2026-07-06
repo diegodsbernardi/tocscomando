@@ -17,7 +17,7 @@
 - [x] **3. Relatório semanal pronto pro WhatsApp** (médio — maior impacto pro Diego) — 2026-07-06
 - [x] **4. DRE simplificado do mês no painel** (médio) — 2026-07-06
 - [x] **5. Comparativo de vendas por dia da semana** (médio) — 2026-07-06
-- [ ] **6. Contagem por cédula também na abertura** (pequeno)
+- [x] **6. Contagem por cédula também na abertura** (pequeno) — 2026-07-06
 - [ ] **7. Destino de sangria** (pequeno)
 - [ ] **8. Previsão de vínculo de extras na semana** (pequeno)
 
