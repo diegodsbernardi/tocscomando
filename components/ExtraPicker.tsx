@@ -166,6 +166,17 @@ export function ExtraPicker({
         })}
       </div>
 
+      {/* Previsão de vínculo: a 1 vinda do limite */}
+      {selected && selectedLevel === "warn" && (
+        <div className="flex items-start gap-2.5 rounded-2xl bg-warn-bg p-4">
+          <span className="text-lg">🔶</span>
+          <p className="text-[13px] font-semibold leading-snug text-warn">
+            {selected.name} já veio {selected.weekCount}x esta semana — se vier
+            hoje, entra no limite de vínculo ({VINCULO_LIMIT}x na mesma semana).
+          </p>
+        </div>
+      )}
+
       {/* Alerta de vínculo */}
       {selected && selectedLevel === "danger" && (
         <div className="flex items-start gap-2.5 rounded-2xl bg-danger-bg p-4">
