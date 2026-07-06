@@ -3,22 +3,27 @@ import { startOfDayISO as spStartOfDay } from "@/lib/dates";
 import { getAuthUser } from "@/lib/profile";
 import { brl, brlSplit } from "@/lib/format";
 import { getDailyRevenueGoal } from "@/lib/settings";
+import { getSaiposSuggestion } from "@/lib/saipos";
 
 function startOfDayISO() {
   return spStartOfDay();
 }
 
+const TOLERANCIA_CONFERENCIA = 5; // R$ — diferença aceitável entre cupons e Saipos
+
 export async function TodayHero() {
-  const supabase = createClient();
-  const [user, metaDia] = await Promise.all([getAuthUser(), getDailyRevenueGoal()]);
+  const [user, metaDia, saipos, reportsRes] = await Promise.all([
+    getAuthUser(),
+    getDailyRevenueGoal(),
+    getSaiposSuggestion(),
+    createClient()
+      .from("reports")
+      .select("credito, debito, pix, total")
+      .gte("created_at", startOfDayISO()),
+  ]);
   if (!user) return null;
 
-  const { data } = await supabase
-    .from("reports")
-    .select("credito, debito, pix, total")
-    .gte("created_at", startOfDayISO());
-
-  const list = data || [];
+  const list = reportsRes.data || [];
   const totals = list.reduce(
     (acc, r) => {
       acc.credito += Number(r.credito);
@@ -30,8 +35,22 @@ export async function TodayHero() {
     { credito: 0, debito: 0, pix: 0, total: 0 },
   );
 
-  const split = brlSplit(totals.total);
-  const pct = Math.min(100, Math.round((totals.total / metaDia) * 100));
+  const totalDia = saipos ? saipos.total_sales : totals.total;
+  const split = brlSplit(totalDia);
+  const pct = Math.min(100, Math.round((totalDia / metaDia) * 100));
+
+  const horaSaipos = saipos
+    ? new Date(saipos.captured_at).toLocaleTimeString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  // conferência: cartões+pix fotografados vs cartões+pix no Saipos
+  const cuponsCartoes = totals.credito + totals.debito + totals.pix;
+  const saiposCartoes = saipos ? saipos.card_sales + saipos.pix_sales : 0;
+  const diff = saiposCartoes - cuponsCartoes;
 
   return (
     <section
@@ -49,7 +68,7 @@ export async function TodayHero() {
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brandyellow px-2.5 py-1 text-[11px] font-bold text-navy">
           <span className="live-dot h-[7px] w-[7px] rounded-full bg-navy" />
-          ao vivo
+          {saipos ? `Saipos · ${horaSaipos}` : "ao vivo"}
         </span>
       </div>
 
@@ -76,6 +95,25 @@ export async function TodayHero() {
         <Breakdown label="Débito" value={totals.debito} icon={<IconCardChip />} />
         <Breakdown label="Pix" value={totals.pix} icon={<IconPix />} />
       </div>
+
+      {saipos ? (
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/[0.14] px-3 py-[9px] text-[11px] font-semibold">
+          <span className="opacity-85">
+            Cupons {brl(cuponsCartoes)} · Saipos {brl(saiposCartoes)}
+          </span>
+          {Math.abs(diff) <= TOLERANCIA_CONFERENCIA ? (
+            <span className="text-ok">✓ cupons conferem</span>
+          ) : diff > 0 ? (
+            <span className="text-warn">⚠ falta fotografar {brl(diff)} em cupons</span>
+          ) : (
+            <span className="text-warn">⚠ cupons acima do Saipos ({brl(-diff)})</span>
+          )}
+        </div>
+      ) : (
+        <small className="mt-3 block text-[11px] opacity-70">
+          fonte: cupons fotografados (Saipos ativo 19h–23h30)
+        </small>
+      )}
     </section>
   );
 }
