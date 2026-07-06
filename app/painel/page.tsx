@@ -7,6 +7,7 @@ import { brl, brlSplit } from "@/lib/format";
 import { getCurrentProfile, roleLabel } from "@/lib/profile";
 import { getPainelData, type DayPoint } from "@/lib/painel-stats";
 import { getCashAlerts, DIAS_RECORRENTE, type DrawerAlert } from "@/lib/cash-alerts";
+import { getSemanaData, SEMANAS_LOOKBACK, type WeekdayAvg } from "@/lib/semana-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,11 @@ export default async function PainelPage() {
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "admin") redirect("/");
 
-  const [d, cashAlerts] = await Promise.all([getPainelData(), getCashAlerts()]);
+  const [d, cashAlerts, semana] = await Promise.all([
+    getPainelData(),
+    getCashAlerts(),
+    getSemanaData(),
+  ]);
   const split = brlSplit(d.weekFaturamento);
   const deltaTone =
     d.weekDeltaPct == null
@@ -112,6 +117,31 @@ export default async function PainelPage() {
           </div>
           <Chart points={d.last14} />
         </section>
+
+        {/* MÉDIA POR DIA DA SEMANA */}
+        {semana.weekdays.length > 0 && (
+          <section className="mt-3 rounded-card bg-white p-4 shadow-card reveal d3">
+            <div className="mb-3 flex items-center justify-between text-xs font-bold uppercase tracking-[0.5px] text-muted">
+              <span>Média por dia da semana</span>
+              <span className="text-muted/70 normal-case tracking-normal">
+                últimas {SEMANAS_LOOKBACK} semanas · Saipos
+              </span>
+            </div>
+            <div className="space-y-2">
+              {semana.weekdays.map((w) => (
+                <WeekdayBar
+                  key={w.dow}
+                  w={w}
+                  max={Math.max(...semana.weekdays.map((x) => x.avg), 0)}
+                />
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] leading-snug text-muted">
+              Média só dos dias com venda registrada ({semana.totalDays} dias no
+              período) — dias sem snapshot ficam de fora.
+            </p>
+          </section>
+        )}
 
         {/* CUSTOS DO MÊS */}
         <h3 className="mb-2 mt-5 px-1 text-[11px] font-bold uppercase tracking-[0.5px] text-muted">
@@ -268,6 +298,35 @@ function Chart({ points }: { points: DayPoint[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function WeekdayBar({ w, max }: { w: WeekdayAvg; max: number }) {
+  const pct = max > 0 ? Math.max((w.avg / max) * 100, 4) : 0;
+  return (
+    <div
+      className="flex items-center gap-2"
+      title={`${w.label}: média de ${brl(w.avg)} em ${w.days} ${w.days === 1 ? "dia" : "dias"}`}
+    >
+      <span className="w-8 shrink-0 text-[11px] font-bold uppercase text-muted">
+        {w.label}
+      </span>
+      <div className="h-4 flex-1 overflow-hidden rounded-full bg-line/50">
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ease-out ${
+            w.peak ? "bg-brandyellow" : w.low ? "bg-cyan/40" : "bg-cyan"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-[86px] shrink-0 text-right text-[12px] font-bold tabular-nums text-navy">
+        {brl(w.avg)}
+      </span>
+      <span className="w-9 shrink-0 text-right text-[9px] font-bold uppercase">
+        {w.peak && <span className="text-warn">maior</span>}
+        {w.low && <span className="text-muted">menor</span>}
+      </span>
     </div>
   );
 }
