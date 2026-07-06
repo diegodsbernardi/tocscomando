@@ -34,6 +34,23 @@ export default async function PainelPage() {
         ? "up"
         : "down";
 
+  // Semáforo da sobra operacional (% sobre a receita Saipos).
+  // Limites default (ajustar com o Diego): ≥85% ok · 75–85% warn · <75% danger.
+  const sobraTone: "ok" | "warn" | "danger" =
+    d.monthSobraPct == null || d.monthSobraPct >= 85
+      ? "ok"
+      : d.monthSobraPct >= 75
+        ? "warn"
+        : "danger";
+  const sobraColor =
+    sobraTone === "ok" ? "text-ok" : sobraTone === "warn" ? "text-warn" : "text-danger";
+  const sobraBadge =
+    sobraTone === "ok"
+      ? "bg-ok-bg text-ok"
+      : sobraTone === "warn"
+        ? "bg-warn-bg text-warn"
+        : "bg-danger-bg text-danger";
+
   const mixTotal = d.mixCredito + d.mixDebito + d.mixPix;
   const pct = (n: number) =>
     mixTotal > 0 ? Math.round((n / mixTotal) * 100) : 0;
@@ -161,6 +178,47 @@ export default async function PainelPage() {
           )}
         </section>
 
+        {/* DRE SIMPLIFICADO DO MÊS */}
+        <h3 className="mb-2 mt-5 px-1 text-[11px] font-bold uppercase tracking-[0.5px] text-muted">
+          DRE simplificado · {d.monthLabel}
+        </h3>
+        <section className="rounded-card bg-white p-4 shadow-card reveal d4">
+          <div className="space-y-1.5 text-sm">
+            <DreRow label="Receita (Saipos)" value={brl(d.monthReceitaSaipos)} />
+            <DreRow
+              label="Custos rastreados (motos + extras + quebra)"
+              value={`− ${brl(d.monthCustoTotal)}`}
+              tone="muted"
+            />
+          </div>
+          <div className="mt-3 flex items-end justify-between border-t border-line pt-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                Sobra operacional
+              </div>
+              <div
+                className={`mt-0.5 font-display text-[28px] font-extrabold leading-none tabular-nums ${sobraColor}`}
+              >
+                {brl(d.monthSobraOperacional)}
+              </div>
+            </div>
+            {d.monthSobraPct != null && (
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${sobraBadge}`}
+              >
+                {d.monthSobraPct.toFixed(1)}% da receita
+              </span>
+            )}
+          </div>
+          <div className="mt-2.5 text-[11px] text-muted">
+            Cartões fotografados (conferência): {brl(d.monthFaturamento)}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-snug text-muted">
+            Margem operacional <strong>parcial</strong>: CMV, insumos, aluguel e
+            folha fixa não entram aqui (isso é papel do Gastão).
+          </p>
+        </section>
+
         {/* MIX DE PAGAMENTO */}
         <h3 className="mb-2 mt-5 px-1 text-[11px] font-bold uppercase tracking-[0.5px] text-muted">
           Mix de pagamento · {d.monthLabel}
@@ -270,6 +328,35 @@ function CustCard({
       >
         {value}
       </div>
+    </div>
+  );
+}
+
+function DreRow({
+  label,
+  value,
+  tone = "navy",
+}: {
+  label: string;
+  value: string;
+  tone?: "navy" | "muted";
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span
+        className={
+          tone === "muted" ? "text-muted" : "font-semibold text-navy"
+        }
+      >
+        {label}
+      </span>
+      <span
+        className={`whitespace-nowrap tabular-nums font-bold ${
+          tone === "muted" ? "text-muted" : "text-navy"
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
 }

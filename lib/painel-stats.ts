@@ -26,6 +26,11 @@ export type PainelData = {
   monthDiferencaCaixa: number; // soma das diferenças (closing - expected)
   monthCustoTotal: number; // motos + extras + abs(dif)
 
+  // DRE simplificado do mês (margem operacional PARCIAL — sem CMV/aluguel)
+  monthReceitaSaipos: number; // último snapshot por loja por dia, somado no mês
+  monthSobraOperacional: number; // receita Saipos - custos rastreados
+  monthSobraPct: number | null; // % da sobra sobre a receita (null se receita = 0)
+
   // mix de pagamento (mês)
   mixCredito: number;
   mixDebito: number;
@@ -92,6 +97,7 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
     { data: shiftsRaw },
     { data: extrasRaw },
     { data: sessionsRaw },
+    { data: saiposRaw },
   ] = await Promise.all([
     supabase
       .from("reports")
@@ -114,6 +120,12 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
       .gte("work_date", monthStart)
       .lt("work_date", monthEndExc)
       .eq("status", "closed"),
+    supabase
+      .from("saipos_snapshots")
+      .select("work_date, drawer_name, total_sales, captured_at")
+      .gte("work_date", monthStart)
+      .lt("work_date", monthEndExc)
+      .order("captured_at", { ascending: false }),
   ]);
 
   const reports = (reportsRaw || []) as {
@@ -186,6 +198,25 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
     return acc + (Number(s.closing_amount) - Number(s.expected_amount));
   }, 0);
 
+  // Receita Saipos do mês: último snapshot por loja por dia (rows já vêm
+  // em ordem decrescente de captured_at), somado.
+  const saipos = (saiposRaw || []) as {
+    work_date: string;
+    drawer_name: string | null;
+    total_sales: number | string | null;
+  }[];
+  const latestByStoreDay = new Map<string, number>();
+  for (const s of saipos) {
+    const key = `${s.work_date}|${s.drawer_name ?? "consolidado"}`;
+    if (!latestByStoreDay.has(key)) {
+      latestByStoreDay.set(key, Number(s.total_sales) || 0);
+    }
+  }
+  let monthReceitaSaipos = 0;
+  latestByStoreDay.forEach((v) => {
+    monthReceitaSaipos += v;
+  });
+
   // Chart últimos 14 dias
   const last14: DayPoint[] = [];
   let cur = last14Start;
@@ -193,6 +224,10 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
     last14.push({ date: cur, total: dayTotal.get(cur) ?? 0 });
     cur = shiftDays(cur, 1);
   }
+
+  const monthCustoTotal =
+    monthCustoMotos + monthCustoExtras + Math.abs(monthDiferencaCaixa);
+  const monthSobraOperacional = monthReceitaSaipos - monthCustoTotal;
 
   return {
     weekStart,
@@ -207,8 +242,13 @@ export const getPainelData = cache(async (): Promise<PainelData> => {
     monthCustoMotos,
     monthCustoExtras,
     monthDiferencaCaixa,
-    monthCustoTotal:
-      monthCustoMotos + monthCustoExtras + Math.abs(monthDiferencaCaixa),
+    monthCustoTotal,
+    monthReceitaSaipos,
+    monthSobraOperacional,
+    monthSobraPct:
+      monthReceitaSaipos > 0
+        ? (monthSobraOperacional / monthReceitaSaipos) * 100
+        : null,
     mixCredito,
     mixDebito,
     mixPix,
