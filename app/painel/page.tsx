@@ -6,6 +6,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { brl, brlSplit } from "@/lib/format";
 import { getCurrentProfile, roleLabel } from "@/lib/profile";
 import { getPainelData, type DayPoint } from "@/lib/painel-stats";
+import { getCashAlerts, DIAS_RECORRENTE, type DrawerAlert } from "@/lib/cash-alerts";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function PainelPage() {
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "admin") redirect("/");
 
-  const d = await getPainelData();
+  const [d, cashAlerts] = await Promise.all([getPainelData(), getCashAlerts()]);
   const split = brlSplit(d.weekFaturamento);
   const deltaTone =
     d.weekDeltaPct == null
@@ -109,6 +110,40 @@ export default async function PainelPage() {
           />
         </div>
 
+        {cashAlerts.drawers.length > 0 && (
+          <section className="mt-2.5 rounded-card bg-white p-4 shadow-card reveal d4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-[0.5px] text-muted">
+                Quebra de caixa · últimos {cashAlerts.lookbackDays} dias
+              </span>
+              {cashAlerts.hasAlert && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    cashAlerts.drawers.some((dr) => dr.grave)
+                      ? "bg-danger-bg text-danger"
+                      : "bg-warn-bg text-warn"
+                  }`}
+                >
+                  {cashAlerts.drawers.some((dr) => dr.grave)
+                    ? "GRAVE"
+                    : "RECORRENTE"}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {cashAlerts.drawers.map((dr) => (
+                <QuebraRow key={dr.drawerId} alert={dr} />
+              ))}
+            </div>
+            {!cashAlerts.hasAlert && (
+              <p className="mt-2 text-[11px] text-muted">
+                Nenhuma caixa com quebra recorrente ({DIAS_RECORRENTE}+ dias no
+                período).
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="mt-3 rounded-card bg-navy p-4 text-white shadow-glow reveal d4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold opacity-80">
@@ -175,6 +210,35 @@ function Chart({ points }: { points: DayPoint[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function QuebraRow({ alert }: { alert: DrawerAlert }) {
+  const tone = alert.grave
+    ? "text-danger"
+    : alert.recorrente
+      ? "text-warn"
+      : alert.acumulado < 0
+        ? "text-navy"
+        : "text-ok";
+  const dot = alert.grave
+    ? "bg-danger"
+    : alert.recorrente
+      ? "bg-warn"
+      : "bg-ok";
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="flex items-center gap-2 font-semibold text-navy">
+        <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+        {alert.drawerName}
+      </span>
+      <span className={`tabular-nums font-bold ${tone}`}>
+        {brl(alert.acumulado)}{" "}
+        <span className="text-[11px] font-normal text-muted">
+          em {alert.diasComQuebra} {alert.diasComQuebra === 1 ? "dia" : "dias"}
+        </span>
+      </span>
     </div>
   );
 }
