@@ -1,0 +1,53 @@
+name: SAIPOS discover (espião de endpoints)
+
+# Reconhecimento manual da API do Saipos (somente leitura / GET).
+# Roda só quando disparado à mão. Não grava nada — cospe um JSON de artifact.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checar credenciais Saipos
+        id: creds
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+        run: |
+          if [ -z "$SAIPOS_USER" ]; then
+            echo "::error::SAIPOS_USER não configurado."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run discovery
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+        run: node scripts/discover_saipos.mjs
+
+      - name: Upload relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saipos-discovery-${{ github.run_id }}
+          path: |
+            saipos-discovery.json
+            saipos-discovery-error.png
+          if-no-files-found: warn
+          retention-days: 7
