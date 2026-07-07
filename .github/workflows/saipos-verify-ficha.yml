@@ -1,0 +1,34 @@
+name: SAIPOS verify ficha (debug)
+
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: "Nomes de itens (separados por ;)"
+        type: string
+        required: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checar credenciais
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+        run: '[ -n "$SAIPOS_USER" ] || { echo "::error::SAIPOS_USER não configurado."; exit 1; }'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Run verify
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          SAIPOS_VERIFY_NAMES: ${{ inputs.names }}
+        run: node scripts/verify_ficha.mjs
