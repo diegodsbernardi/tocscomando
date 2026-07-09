@@ -1,5 +1,7 @@
 # Plano: Logins individuais da equipe (contas + papéis)
 
+> ✅ **EXECUTADO em 2026-07-09**: contas do Eloir (Salão) e da Sara (Delivery) ativadas com senha definida pelo Diego; bônus: DrawerSwitcher na home permite o próprio operador trocar de loja (app/perfil/actions.ts + components/DrawerSwitcher.tsx). Novo funcionário no futuro = repetir os passos abaixo.
+
 > **Como usar**: abra uma sessão de Claude Code em `~/tocscomando` e mande: *"executa o plano docs/planos/logins-equipe.md"*.
 > **Leia primeiro** `docs/planos/_convencoes.md` — regras do repo, SQL via Management API e aprovações obrigatórias do Diego.
 
