@@ -12,6 +12,8 @@ import { ExtrasMiniCard } from "@/components/dashboard/ExtrasMiniCard";
 import { CloseDayCard } from "@/components/dashboard/CloseDayCard";
 import { DayNotClosedBanner } from "@/components/dashboard/DayNotClosedBanner";
 import { SuggestionsCard } from "@/components/dashboard/SuggestionsCard";
+import { DrawerSwitcher } from "@/components/DrawerSwitcher";
+import { createClient } from "@/lib/supabase/server";
 import { firstName, greetingForNow } from "@/lib/format";
 import { getAuthUser, getCurrentProfile, roleLabel } from "@/lib/profile";
 
@@ -25,6 +27,18 @@ export default async function HomePage() {
   const name = profile?.display_name || firstName(user.email) || "Você";
 
   const isAdmin = profile?.role === "admin";
+
+  // Operador pode trocar de loja/caixa (às vezes eles se trocam no dia)
+  let drawers: { id: string; name: string }[] = [];
+  if (!isAdmin) {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("cash_drawers")
+      .select("id, name")
+      .eq("active", true)
+      .order("name");
+    drawers = data || [];
+  }
 
   return (
     <Shell>
@@ -60,6 +74,9 @@ export default async function HomePage() {
           </div>
         }
       />
+      {!isAdmin && drawers.length > 0 && (
+        <DrawerSwitcher drawers={drawers} currentDrawerId={profile?.default_drawer_id ?? null} />
+      )}
       {/* Cards com query própria fazem streaming: a home aparece na hora
           e cada card entra quando o dado chega */}
       <Suspense fallback={null}>
