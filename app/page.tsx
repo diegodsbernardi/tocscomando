@@ -15,6 +15,7 @@ import { SuggestionsCard } from "@/components/dashboard/SuggestionsCard";
 import { DrawerSwitcher } from "@/components/DrawerSwitcher";
 import { ShiftNotesCard } from "@/components/dashboard/ShiftNotesCard";
 import { ChecklistCard } from "@/components/dashboard/ChecklistCard";
+import { OperatorHero } from "@/components/dashboard/OperatorHero";
 import { createClient } from "@/lib/supabase/server";
 import { firstName, greetingForNow } from "@/lib/format";
 import { getAuthUser, getCurrentProfile, roleLabel } from "@/lib/profile";
@@ -88,7 +89,7 @@ export default async function HomePage() {
         <ShiftNotesCard />
       </Suspense>
       <Suspense fallback={<Skeleton className="mx-4 mt-3 h-[220px] rounded-hero" />}>
-        <TodayHero />
+        {isAdmin ? <TodayHero /> : <OperatorHero />}
       </Suspense>
       <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[76px] rounded-card" />}>
         <QuickStats />
@@ -98,9 +99,11 @@ export default async function HomePage() {
         <ChecklistCard />
       </Suspense>
       <CloseDayCard />
-      <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[104px] rounded-card" />}>
-        <ExtrasMiniCard />
-      </Suspense>
+      {isAdmin && (
+        <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[104px] rounded-card" />}>
+          <ExtrasMiniCard />
+        </Suspense>
+      )}
       <SuggestionsCard />
     </Shell>
   );

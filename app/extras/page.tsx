@@ -72,6 +72,7 @@ export default async function ExtrasPage({
     | "atendimento"
     | "cozinha";
   const profile = await getCurrentProfile();
+  const isAdmin = profile?.role === "admin";
   const { start, end } = monthRange(mes);
   const week = isoWeekRange(isoToday());
 
@@ -133,7 +134,8 @@ export default async function ExtrasPage({
       <TopBar title="Extras" subtitle="freelancers do mês" role={roleLabel(profile)} />
 
       <div className="px-4">
-        {/* HERO */}
+        {/* HERO — totais do mês e vínculo são visão de gestão (admin) */}
+        {isAdmin && (
         <section className="relative mt-1 overflow-hidden rounded-hero p-5 px-5 text-white shadow-glow bg-cyan-hero reveal d2">
           <span
             aria-hidden
@@ -173,6 +175,7 @@ export default async function ExtrasPage({
             <SplitCol label="EM PERIGO" value={String(dangerCount)} />
           </div>
         </section>
+        )}
 
         {/* Filtros centro de custo */}
         <div className="mt-4 flex gap-2 reveal d3">
