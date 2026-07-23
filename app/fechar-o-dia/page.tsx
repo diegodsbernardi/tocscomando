@@ -9,6 +9,7 @@ import { brl } from "@/lib/format";
 import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { Logo } from "@/components/ui/Logo";
 import { CloseDayFinishButton } from "@/components/CloseDayFinishButton";
+import { NoCouponWarning } from "@/components/NoCouponWarning";
 import { getCurrentProfile, roleLabel, visibleDrawerFilter } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
@@ -503,6 +504,11 @@ function StepConferir({
       <p className="mb-3 px-1 text-[13px] leading-snug text-muted">
         Resumo do dia. Se algo não bateu, dá pra voltar e ajustar.
       </p>
+      {cardTotal === 0 && (
+        <div className="mb-3">
+          <NoCouponWarning />
+        </div>
+      )}
       <div className="rounded-card bg-white p-4 shadow-card">
         <SumLine label="🛵 Motoboys" value={brl(motoTotal)} />
         <SumLine

@@ -7,6 +7,7 @@ import { CashMovementForm } from "@/components/CashMovementForm";
 import { CashMovementList, type Movement } from "@/components/CashMovementList";
 import { closeSession } from "../../actions";
 import { getSaiposSuggestion } from "@/lib/saipos";
+import { NoCouponWarning } from "@/components/NoCouponWarning";
 import { brl } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ export default async function FecharCaixaPage({
     <Shell>
       <TopBar title="Fechar caixa" subtitle={drawerName} backHref="/caixa" />
       <div className="mt-2 space-y-4 px-4">
+        <NoCouponWarning />
 
         {/* Movimentações da sessão — fica acima do fechamento pra ser o primeiro reflexo
             de "esqueci de registrar algo" antes de contar a gaveta */}
