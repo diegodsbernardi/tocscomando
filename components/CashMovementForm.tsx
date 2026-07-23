@@ -4,16 +4,38 @@ import { useState } from "react";
 import { addMovement } from "@/app/caixa/actions";
 
 const CATS = {
-  out: ["Fornecedor", "Depósito/Banco", "Troco p/ outro caixa", "Outros"],
+  out: [
+    "Fornecedor",
+    "Depósito/Banco",
+    "Vale / adiantamento",
+    "Consumo interno",
+    "Perda / desperdício",
+    "Troco p/ outro caixa",
+    "Outros",
+  ],
   in: ["Troco do outro caixa", "Suprimento", "Outros"],
 } as const;
 
 // Destino da sangria (gravado como prefixo "[destino]" no note — sem migration).
 const DESTINOS = ["Cofre", "Banco", "Pagamento", "Outro"] as const;
 
-// "Troco p/ outro caixa" já tem destino implícito; o resto das saídas é sangria/retirada.
+// Categorias em que o motivo é obrigatório (quem pegou o vale / o que consumiu / o que perdeu)
+const MOTIVO_OBRIGATORIO = ["Outros", "Vale / adiantamento", "Consumo interno", "Perda / desperdício"];
+
+const PLACEHOLDER_MOTIVO: Record<string, string> = {
+  "Vale / adiantamento": "quem pegou? ex: João — desconta dia 05",
+  "Consumo interno": "o que foi? ex: lanche funcionário / cortesia mesa 4",
+  "Perda / desperdício": "o que perdeu? ex: 2 smash queimados",
+  Outros: "obrigatório em Outros",
+};
+
+// "Troco p/ outro caixa" já tem destino implícito; vale/consumo/perda não são sangria.
 function pedeDestino(direction: "out" | "in", category: string) {
-  return direction === "out" && category !== "" && category !== "Troco p/ outro caixa";
+  return (
+    direction === "out" &&
+    category !== "" &&
+    !["Troco p/ outro caixa", "Vale / adiantamento", "Consumo interno", "Perda / desperdício"].includes(category)
+  );
 }
 
 export function CashMovementForm({ sessionId }: { sessionId: string }) {
@@ -32,8 +54,8 @@ export function CashMovementForm({ sessionId }: { sessionId: string }) {
       setError("Escolha pra onde o dinheiro foi (destino).");
       return;
     }
-    if (category === "Outros" && !note.trim()) {
-      setError("Em 'Outros' o motivo é obrigatório.");
+    if (MOTIVO_OBRIGATORIO.includes(category) && !note.trim()) {
+      setError(`Em '${category}' o motivo é obrigatório.`);
       return;
     }
     setSubmitting(true);
@@ -173,11 +195,7 @@ export function CashMovementForm({ sessionId }: { sessionId: string }) {
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder={
-            category === "Outros"
-              ? "obrigatório em Outros"
-              : "ex: entrega de água"
-          }
+          placeholder={PLACEHOLDER_MOTIVO[category] || "ex: entrega de água"}
           className="mt-1 w-full rounded-xl border-[1.5px] border-line bg-white px-3 py-2.5 text-sm focus:border-cyan focus:outline-none"
         />
       </div>

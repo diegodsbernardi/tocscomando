@@ -227,6 +227,40 @@ export default async function PainelPage() {
           </section>
         )}
 
+        {/* SAÍDAS OPERACIONAIS (vale / consumo / perda) */}
+        {!sangrias.error && sangrias.operacionais.length > 0 && (
+          <section className="mt-2.5 rounded-card bg-white p-4 shadow-card reveal d4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-[0.5px] text-muted">
+                Vales, consumo e perdas · {d.monthLabel}
+              </span>
+              <span className="font-display text-sm font-extrabold tabular-nums text-navy">
+                {brl(sangrias.operacionais.reduce((a, s) => a + s.total, 0))}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {sangrias.operacionais.map((s) => (
+                <div
+                  key={s.destino}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="font-semibold text-navy">{s.destino}</span>
+                  <span className="tabular-nums font-bold text-navy">
+                    {brl(s.total)}{" "}
+                    <span className="text-[11px] font-normal text-muted">
+                      · {s.count}x
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-muted">
+              Registradas no caixa com motivo obrigatório — o detalhe (quem/o quê)
+              fica na movimentação da sessão.
+            </p>
+          </section>
+        )}
+
         <section className="mt-3 rounded-card bg-navy p-4 text-white shadow-glow reveal d4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold opacity-80">
