@@ -10,6 +10,7 @@ import { MIN_DAILY_PAYMENT } from "@/lib/motoboys";
 import { Logo } from "@/components/ui/Logo";
 import { CloseDayFinishButton } from "@/components/CloseDayFinishButton";
 import { NoCouponWarning } from "@/components/NoCouponWarning";
+import { CHECKLIST_FECHAMENTO, getTodayChecklist } from "@/lib/checklist";
 import { getCurrentProfile, roleLabel, visibleDrawerFilter } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,10 @@ export default async function FecharODiaPage({
   // Fonte única dos dados/totais do dia (lib/day-totals) — a tela mostra o
   // escopo do perfil; a action closeDay recalcula global no server.
   const { shifts, extras, sessions, reports, totals } = await getDayData(scopedDrawerId);
+  const checklistState = await getTodayChecklist();
+  const checklist = checklistState.error
+    ? null
+    : { done: checklistState.fechamentoDone, total: CHECKLIST_FECHAMENTO.length };
   const {
     moto_total: motoTotal,
     extras_pagos: extrasPagos,
@@ -169,6 +174,7 @@ export default async function FecharODiaPage({
             cashDiff={cashDiff}
             cardTotal={cardTotal}
             cashClosedCount={sessions.filter((s) => s.status === "closed").length}
+            checklist={checklist}
           />
         )}
       </main>
@@ -488,6 +494,7 @@ function StepConferir({
   cashDiff,
   cardTotal,
   cashClosedCount,
+  checklist,
 }: {
   motoTotal: number;
   extrasPagos: number;
@@ -496,6 +503,7 @@ function StepConferir({
   cashDiff: number;
   cardTotal: number;
   cashClosedCount: number;
+  checklist: { done: number; total: number } | null;
 }) {
   const faturamento = cashTotal + cardTotal;
   const cashOk = Math.abs(cashDiff) < 0.005;
@@ -508,6 +516,14 @@ function StepConferir({
         <div className="mb-3">
           <NoCouponWarning />
         </div>
+      )}
+      {checklist && checklist.done < checklist.total && (
+        <Link
+          href="/checklist"
+          className="mb-3 block rounded-card bg-warn-bg p-3 px-4 text-sm font-semibold text-warn shadow-card"
+        >
+          ☑️ Checklist de fechamento: {checklist.done}/{checklist.total} — toca pra completar
+        </Link>
       )}
       <div className="rounded-card bg-white p-4 shadow-card">
         <SumLine label="🛵 Motoboys" value={brl(motoTotal)} />

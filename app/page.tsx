@@ -14,6 +14,7 @@ import { DayNotClosedBanner } from "@/components/dashboard/DayNotClosedBanner";
 import { SuggestionsCard } from "@/components/dashboard/SuggestionsCard";
 import { DrawerSwitcher } from "@/components/DrawerSwitcher";
 import { ShiftNotesCard } from "@/components/dashboard/ShiftNotesCard";
+import { ChecklistCard } from "@/components/dashboard/ChecklistCard";
 import { createClient } from "@/lib/supabase/server";
 import { firstName, greetingForNow } from "@/lib/format";
 import { getAuthUser, getCurrentProfile, roleLabel } from "@/lib/profile";
@@ -93,6 +94,9 @@ export default async function HomePage() {
         <QuickStats />
       </Suspense>
       <CaptureActionCard />
+      <Suspense fallback={null}>
+        <ChecklistCard />
+      </Suspense>
       <CloseDayCard />
       <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[104px] rounded-card" />}>
         <ExtrasMiniCard />
