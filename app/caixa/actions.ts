@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { todayISO as spToday } from "@/lib/dates";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/profile";
 
 function todayISO() {
   return spToday();
@@ -144,6 +145,11 @@ export async function deleteSession(id: string) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Não autenticado" };
+
+  const profile = await getCurrentProfile();
+  if (profile?.role !== "admin") {
+    return { ok: false, error: "Só o admin pode apagar sessões." };
+  }
 
   const { error } = await supabase.from("cash_sessions").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };

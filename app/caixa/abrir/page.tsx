@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Shell } from "@/components/ui/Shell";
 import { TopBar } from "@/components/ui/TopBar";
 import { CashOpenForm } from "@/components/CashOpenForm";
+import { getCurrentProfile, visibleDrawerFilter } from "@/lib/profile";
 import { openSession } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +24,17 @@ export default async function AbrirCaixaPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: drawers } = await supabase
+  // Mesmo escopo de /caixa: operador com caixa atribuído só abre o dele
+  const profile = await getCurrentProfile();
+  const scopedDrawerId = visibleDrawerFilter(profile);
+
+  let drawersQuery = supabase
     .from("cash_drawers")
     .select("id, name")
     .eq("active", true)
     .order("name");
+  if (scopedDrawerId) drawersQuery = drawersQuery.eq("id", scopedDrawerId);
+  const { data: drawers } = await drawersQuery;
   const list = (drawers || []) as Drawer[];
   const preselected =
     searchParams.drawer && list.find((d) => d.id === searchParams.drawer)

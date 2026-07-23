@@ -281,7 +281,7 @@ export default async function CaixaPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <ReopenButton id={s.id} />
-                      <DeleteSessionButton id={s.id} />
+                      {profile?.role === "admin" && <DeleteSessionButton id={s.id} />}
                     </div>
                   </div>
                 </article>
