@@ -18,7 +18,7 @@
 - [x] **4. DRE simplificado do mês no painel** (médio) — 2026-07-06
 - [x] **5. Comparativo de vendas por dia da semana** (médio) — 2026-07-06
 - [x] **6. Contagem por cédula também na abertura** (pequeno) — 2026-07-06
-- [x] **7. Destino de sangria** (pequeno) — 2026-07-06 · ⚠️ requer rodar `supabase/migration_cash_movements_fix.sql` em prod (tabela `cash_movements` está com schema antigo — form de movimentações já estava quebrado antes deste item)
+- [x] **7. Destino de sangria** (pequeno) — 2026-07-06 · ✅ migration `supabase/migration_cash_movements_fix.sql` aplicada em prod (schema novo `direction/category/amount/note` confirmado em 2026-07-23, tabela já com movimentações reais da equipe)
 - [x] **8. Previsão de vínculo de extras na semana** (pequeno) — 2026-07-06
 
 ---
