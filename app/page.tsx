@@ -13,6 +13,7 @@ import { CloseDayCard } from "@/components/dashboard/CloseDayCard";
 import { DayNotClosedBanner } from "@/components/dashboard/DayNotClosedBanner";
 import { SuggestionsCard } from "@/components/dashboard/SuggestionsCard";
 import { DrawerSwitcher } from "@/components/DrawerSwitcher";
+import { ShiftNotesCard } from "@/components/dashboard/ShiftNotesCard";
 import { createClient } from "@/lib/supabase/server";
 import { firstName, greetingForNow } from "@/lib/format";
 import { getAuthUser, getCurrentProfile, roleLabel } from "@/lib/profile";
@@ -81,6 +82,9 @@ export default async function HomePage() {
           e cada card entra quando o dado chega */}
       <Suspense fallback={null}>
         <DayNotClosedBanner />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ShiftNotesCard />
       </Suspense>
       <Suspense fallback={<Skeleton className="mx-4 mt-3 h-[220px] rounded-hero" />}>
         <TodayHero />
