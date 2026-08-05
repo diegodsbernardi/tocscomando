@@ -24,8 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
-      # Uma loja por job: a sessão do Saipos entra numa loja só, e falha numa
-      # não pode derrubar a outra.
+      # Uma loja por job, MAS em série: o Saipos só admite uma sessão por
+      # usuário — jobs em paralelo derrubam o login um do outro.
+      max-parallel: 1
       fail-fast: false
       matrix:
         store: ["49895", "49897"]
