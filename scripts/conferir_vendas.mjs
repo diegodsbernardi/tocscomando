@@ -45,18 +45,47 @@ const num = (v) => Number(String(v ?? 0).replace(",", ".")) || 0;
 const sum = (rows, f) => rows.reduce((a, r) => a + num(f(r)), 0);
 
 async function getSalesByPeriod(s, storeId) {
-  // Paginação: o backend espera rows_per_page e rownum_initial (1-based).
-  const rows = [];
-  let rownum = 1;
+  // Filtro reconstruído do SalesByPeriodController: os arrays vazios são
+  // obrigatórios (o backend faz .find() neles e explode com 500 se faltarem).
+  // sale_status_filter: 1=todas 2=canceladas 3=não canceladas 4=com item cancelado
+  // add_or_discount_filter: 1=todas 2=com desconto 3=com acréscimo
+  const mk = (rownum, perPage, statusFilter) => ({
+    start_date: DATE,
+    end_date: DATE,
+    id_partner_sale: [],
+    id_store_shift: 0,
+    id_store_partner_sale: [],
+    id_store_site_data: [],
+    id_sale_types: ["1", "2", "3", "4"],
+    id_store_discount_coupon: 0,
+    rows_per_page: perPage,
+    rownum_initial: rownum,
+    total_rows: null,
+    load_summary: true,
+    sale_status_filter: statusFilter,
+    add_or_discount_filter: [1, 2, 3],
+  });
+
+  // [3] = só não canceladas, pra bater com o exclude_canceled do itemsSold.
   const perPage = 500;
-  for (let page = 0; page < 20; page++) {
-    const filter = { ...baseFilter, rows_per_page: perPage, rownum_initial: rownum };
-    const json = await s.get(storeId, `sales-by-period?filter=${enc(filter)}`);
-    const batch = json?.rows || (Array.isArray(json) ? json : []);
+  let statusFilter = [3];
+  let first;
+  try {
+    first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage, statusFilter))}`);
+  } catch (e) {
+    console.warn(`  sale_status_filter [3] falhou (${e.message.slice(0, 80)}) — tentando [1,2,3,4]`);
+    statusFilter = [1, 2, 3, 4];
+    first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage, statusFilter))}`);
+  }
+
+  const rows = [...(first?.rows || [])];
+  const total = num(first?.total);
+  if (first?.summary) console.log(`  summary do relatório: ${JSON.stringify(first.summary).slice(0, 400)}`);
+  for (let rownum = perPage + 1; rows.length < total && rownum < total + perPage; rownum += perPage) {
+    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage, statusFilter))}`);
+    const batch = j?.rows || [];
+    if (!batch.length) break;
     rows.push(...batch);
-    const total = num(json?.total);
-    if (!batch.length || rows.length >= total) break;
-    rownum += perPage;
   }
   return rows;
 }
