@@ -73,7 +73,14 @@ async function main() {
         }
       };
 
-      console.log(`[spy] headers da chamada real: ${Object.keys(hit.headers || {}).join(", ")}`);
+      // Mostra os headers de contexto (sem authorization/fingerprint/cookie).
+      const seguro = Object.entries(hit.headers || {}).filter(
+        ([k]) => !/authorization|cookie|fingerprint|token|^[0-9a-f]{24,}$/i.test(k)
+      );
+      console.log(`[spy] headers da chamada real:`);
+      seguro.forEach(([k, v]) => console.log(`    ${k}: ${String(v).slice(0, 120)}`));
+      const sigilosos = Object.keys(hit.headers || {}).filter(([k]) => true).filter((k) => /authorization|cookie|fingerprint|token|^[0-9a-f]{24,}$/i.test(k));
+      console.log(`    (omitidos: ${sigilosos.join(", ")})`);
       console.log(`[spy] reexecutando a chamada do app:`);
       await runUrl("url original", hit.url);
 
