@@ -68,19 +68,30 @@ async function main() {
       add_or_discount_filter: [1, 2, 3],
     });
 
-    for (const perPage of [25, 50, 100, 200, 500]) {
-      try {
-        const j = await s.get(storeId, `sales-by-period?filter=${enc(real(perPage))}`);
-        const rows = j?.rows || [];
-        console.log(`  rows_per_page=${String(perPage).padStart(4)} → total=${j?.total ?? "?"} linhas=${rows.length}`);
-        if (rows.length) {
-          console.log(`     keys=${Object.keys(rows[0]).join(",")}`);
-          console.log(`     ex=${JSON.stringify(rows[0]).slice(0, 600)}`);
-          if (j?.summary) console.log(`     summary=${JSON.stringify(j.summary).slice(0, 600)}`);
-          break;
+    // O app buscou na 49895 com end_date = dia seguinte. Testa as duas lojas
+    // e as duas janelas pra separar "filtro errado" de "loja sem dado".
+    const nextDay = (br) => {
+      const [d, m, y] = br.split("/");
+      const dt = new Date(`${y}-${m}-${d}T12:00:00Z`);
+      dt.setUTCDate(dt.getUTCDate() + 1);
+      const iso = dt.toISOString().slice(0, 10).split("-");
+      return `${iso[2]}/${iso[1]}/${iso[0]}`;
+    };
+
+    for (const loja of s.storeIds) {
+      for (const [rotulo, end] of [["mesmo dia", DATE], ["até o dia seguinte", nextDay(DATE)]]) {
+        const f = { ...real(25), end_date: end };
+        try {
+          const j = await s.get(loja, `sales-by-period?filter=${enc(f)}`);
+          const rows = j?.rows || [];
+          console.log(`  loja ${loja} · ${rotulo} → total=${j?.total ?? "?"} linhas=${rows.length}`);
+          if (rows.length) {
+            console.log(`     keys=${Object.keys(rows[0]).join(",")}`);
+            console.log(`     ex=${JSON.stringify(rows[0]).slice(0, 700)}`);
+          }
+        } catch (e) {
+          console.log(`  loja ${loja} · ${rotulo} → ERRO ${e.message.slice(0, 120)}`);
         }
-      } catch (e) {
-        console.log(`  rows_per_page=${perPage} → ERRO ${e.message.slice(0, 120)}`);
       }
     }
   } catch (e) {
