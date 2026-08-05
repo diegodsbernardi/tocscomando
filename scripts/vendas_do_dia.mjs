@@ -15,11 +15,18 @@
  */
 
 import { writeFileSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
 import { openSaiposSession } from "./lib/saipos_session.mjs";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DRY_RUN = process.env.DRY_RUN === "1";
 
 function defaultDateBR() {
   const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-  const [y, m, d] = iso.split("-");
+  const dt = new Date(`${iso}T12:00:00Z`);
+  dt.setUTCDate(dt.getUTCDate() + Number(process.env.SAIPOS_DAY_OFFSET || 0));
+  const [y, m, d] = dt.toISOString().slice(0, 10).split("-");
   return `${d}/${m}/${y}`;
 }
 const DATE = process.env.SAIPOS_DATE || defaultDateBR();
@@ -48,13 +55,15 @@ async function main() {
       } catch {}
     });
 
+    const storeId = s.storeIds[0]; // a sessão entra numa loja só; o workflow roda uma vez por loja
     const base = (process.env.SAIPOS_BASE_URL || "https://app.saipos.com").replace(/\/$/, "");
+    console.log(`[dia] loja ${storeId} · ${DATE}`);
     await s.page.goto(`${base}/#/app/report/sales-by-period`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await s.page.waitForTimeout(9000);
 
     // Datas: a janela do Saipos é aberta no fim, então pedimos dia → dia+1
     // e filtramos depois. Os campos são inputs de data do Angular Material.
-    const inputs = s.page.locator('input[type="date"], input[placeholder*="/"], md-datepicker input');
+    const inputs = s.page.locator('.md-datepicker-input, input[type="date"], md-datepicker input');
     const qtd = await inputs.count().catch(() => 0);
     console.log(`[dia] ${qtd} campo(s) de data na tela`);
     if (qtd >= 2) {
@@ -116,14 +125,89 @@ async function main() {
     console.log(`\n[dia] ${porId.size} venda(s) capturada(s) de ${total} na janela · ${doDia.length} em ${DATE}`);
     if (porId.size < total) console.log(`[dia] ⚠️  faltaram ${total - porId.size} venda(s) da janela — números abaixo incompletos`);
 
-    const soma = (f) => doDia.reduce((a, v) => a + num(f(v)), 0);
-    const itens = soma((v) => v.total_amount_items);
-    const desconto = soma((v) => v.total_discount);
-    const acrescimo = soma((v) => v.total_increase);
-    const entrega = soma((v) => v.delivery_fee);
-    const liquido = soma((v) => v.total_amount);
+    // Canceladas ficam de fora das somas (o caixa também não as conta), mas
+    // são registradas à parte — cancelamento demais é sinal por si só.
+    const canceladas = doDia.filter((v) => v.sale_canceled === true || v.sale_canceled === "Y");
+    const validas = doDia.filter((v) => !canceladas.includes(v));
+
+    const soma = (rows, f) => rows.reduce((a, v) => a + num(f(v)), 0);
+    const itens = soma(validas, (v) => v.total_amount_items);
+    const desconto = soma(validas, (v) => v.total_discount);
+    const acrescimo = soma(validas, (v) => v.total_increase);
+    const entrega = soma(validas, (v) => v.delivery_fee);
+    const servico = soma(validas, (v) => v.total_service_charge_amount);
+    const liquido = soma(validas, (v) => v.total_amount);
+
+    // "Voucher Parceiro Desconto" = cupom do marketplace (iFood etc.), não é
+    // alguém dando desconto no balcão. Só o manual interessa pro alerta.
+    const ehVoucher = (v) => /voucher|parceiro/i.test(v.desc_payment_types || "");
+    const comDesconto = validas.filter((v) => num(v.total_discount) > 0);
+    const manuais = comDesconto.filter((v) => !ehVoucher(v));
+    const descontoManual = soma(manuais, (v) => v.total_discount);
+
     console.log(`  itens ${brl(itens)} · desconto ${brl(desconto)} · acréscimo ${brl(acrescimo)} · entrega ${brl(entrega)} → total ${brl(liquido)}`);
-    if (itens > 0) console.log(`  desconto = ${((desconto / itens) * 100).toFixed(1)}% do valor de menu`);
+    if (itens > 0) {
+      console.log(`  desconto total  ${brl(desconto)} = ${((desconto / itens) * 100).toFixed(1)}% do valor de menu (${comDesconto.length} venda(s))`);
+      console.log(`  desconto MANUAL ${brl(descontoManual)} = ${((descontoManual / itens) * 100).toFixed(1)}% (${manuais.length} venda(s), fora cupom de parceiro)`);
+    }
+    if (canceladas.length) console.log(`  ${canceladas.length} venda(s) cancelada(s), ${brl(soma(canceladas, (v) => v.total_amount))}`);
+    manuais
+      .sort((a, b) => num(b.total_discount) - num(a.total_discount))
+      .slice(0, 10)
+      .forEach((v) =>
+        console.log(`    #${v.sale_number} ${brl(v.total_amount)} − ${brl(v.total_discount)} · ${v.desc_payment_types || "-"} · motivo: ${v.discount_reason || "(sem motivo)"}`)
+      );
+
+    // ---- gravação ----
+    if (!DRY_RUN && SUPABASE_URL && SERVICE_ROLE && doDia.length) {
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+      const workDate = DATE.split("/").reverse().join("-");
+
+      const { error: e1 } = await supabase.from("saipos_daily_sales").upsert(
+        {
+          work_date: workDate,
+          store_id: storeId,
+          sales_count: validas.length,
+          items_amount: itens,
+          discount_amount: desconto,
+          manual_discount_amount: descontoManual,
+          increase_amount: acrescimo,
+          delivery_fee: entrega,
+          service_charge: servico,
+          net_amount: liquido,
+          canceled_count: canceladas.length,
+          canceled_amount: soma(canceladas, (v) => v.total_amount),
+          captured_at: new Date().toISOString(),
+        },
+        { onConflict: "work_date,store_id" }
+      );
+      if (e1) console.error(`  erro gravando resumo: ${e1.message}`);
+      else console.log(`  resumo do dia gravado ✓`);
+
+      if (comDesconto.length) {
+        const linhas = comDesconto.map((v) => ({
+          work_date: workDate,
+          store_id: storeId,
+          id_sale: v.id_sale,
+          sale_number: String(v.sale_number ?? ""),
+          sold_at: v.created_at,
+          shift: v.desc_store_shift ?? null,
+          total_amount: num(v.total_amount),
+          discount_amount: num(v.total_discount),
+          discount_reason: v.discount_reason || null,
+          payment_types: v.desc_payment_types || null,
+          is_partner_voucher: ehVoucher(v),
+          captured_at: new Date().toISOString(),
+        }));
+        const { error: e2 } = await supabase
+          .from("saipos_discount_sales")
+          .upsert(linhas, { onConflict: "work_date,store_id,id_sale" });
+        if (e2) console.error(`  erro gravando descontos: ${e2.message}`);
+        else console.log(`  ${linhas.length} venda(s) com desconto gravada(s) ✓`);
+      }
+    } else if (DRY_RUN) {
+      console.log(`  DRY_RUN — nada gravado`);
+    }
 
     writeFileSync(
       "saipos-vendas-dia.json",

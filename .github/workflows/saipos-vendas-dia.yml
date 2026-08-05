@@ -1,42 +1,78 @@
-name: SAIPOS vendas do dia
+name: SAIPOS vendas do dia (descontos)
 
 on:
+  # Cron em UTC (Brasil = UTC-3).
+  #  02:45 UTC = 23:45 BRT — fecha o dia corrente.
+  #  06:05 UTC = 03:05 BRT — repassa o dia anterior já fechado.
+  schedule:
+    - cron: "45 2 * * *"
+    - cron: "5 6 * * *"
+
   workflow_dispatch:
     inputs:
       date:
-        description: "Data do relatório (DD/MM/YYYY) — default ontem"
+        description: "Data DD/MM/YYYY (opcional, default hoje)"
         type: string
         required: false
+      dry_run:
+        description: "Rodar em DRY_RUN (não grava no banco)"
+        type: boolean
+        default: false
 
 jobs:
-  discover:
+  vendas:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      # Uma loja por job: a sessão do Saipos entra numa loja só, e falha numa
+      # não pode derrubar a outra.
+      fail-fast: false
+      matrix:
+        store: ["49895", "49897"]
     steps:
       - name: Checar credenciais
+        id: creds
         env:
           SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
-        run: '[ -n "$SAIPOS_USER" ] || { echo "::error::SAIPOS_USER não configurado."; exit 1; }'
+        run: |
+          if [ -z "$SAIPOS_USER" ]; then
+            echo "::notice::SAIPOS_USER não configurado — pulando."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.creds.outputs.ok == 'true'
       - uses: actions/setup-node@v4
+        if: steps.creds.outputs.ok == 'true'
         with:
           node-version: "20"
           cache: npm
       - run: npm install --no-audit --no-fund
+        if: steps.creds.outputs.ok == 'true'
       - run: npx playwright install --with-deps chromium
-      - name: Conferir itens x caixa
+        if: steps.creds.outputs.ok == 'true'
+
+      - name: Capturar vendas do dia (loja ${{ matrix.store }})
+        if: steps.creds.outputs.ok == 'true'
         env:
           SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
           SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
           SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
-          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          SAIPOS_STORE_IDS: ${{ matrix.store }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SAIPOS_DATE: ${{ inputs.date }}
+          SAIPOS_DAY_OFFSET: ${{ github.event.schedule == '5 6 * * *' && '-1' || '0' }}
+          DRY_RUN: ${{ inputs.dry_run == true && '1' || '' }}
         run: node scripts/vendas_do_dia.mjs
-      - name: Subir relatório
+
+      - name: Subir diagnóstico
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: saipos-vendas-dia
+          name: saipos-vendas-dia-${{ matrix.store }}
           path: |
             saipos-vendas-dia.json
             saipos-vendas-dia.png
