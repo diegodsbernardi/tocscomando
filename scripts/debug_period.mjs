@@ -1,97 +1,59 @@
 #!/usr/bin/env node
 /**
- * Debug pontual: qual campo do filtro faz o sales-by-period voltar vazio?
- *
- * Roda uma matriz de variantes do filtro na loja alvo e mostra quantas linhas
- * cada uma devolve. Descartável — some quando a conferência estiver fechada.
- * Somente GET. Env: SAIPOS_DATE, SAIPOS_DEBUG_STORE (default 2ª loja).
+ * Debug: por que a mesma query devolve 44 linhas pelo app e 0 por nós?
+ * Testa encoding (JSON cru x percent-encoded), tamanho de página e janela.
+ * Descartável. Somente GET.
  */
 
 import { openSaiposSession } from "./lib/saipos_session.mjs";
 
 const DATE = process.env.SAIPOS_DATE || "04/08/2026";
-const enc = (o) => encodeURIComponent(JSON.stringify(o));
 
-const base = {
+function nextDay(br) {
+  const [d, m, y] = br.split("/");
+  const dt = new Date(`${y}-${m}-${d}T12:00:00Z`);
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  const [yy, mm, dd] = dt.toISOString().slice(0, 10).split("-");
+  return `${dd}/${mm}/${yy}`;
+}
+
+const filtro = (perPage, end) => ({
   start_date: DATE,
-  end_date: DATE,
+  end_date: end,
   id_partner_sale: [],
   id_store_shift: 0,
   id_store_partner_sale: [],
   id_store_site_data: [],
-  id_sale_types: ["1", "2", "3", "4"],
+  id_sale_types: [1, 2, 3, 4],
   id_store_discount_coupon: 0,
-  rows_per_page: 500,
+  rows_per_page: perPage,
   rownum_initial: 1,
   total_rows: null,
   load_summary: true,
-  sale_status_filter: [3],
+  sale_status_filter: [1, 2, 3, 4],
   add_or_discount_filter: [1, 2, 3],
-};
-
-const variants = [
-  ["base (status [3])", base],
-  ["status [1,2,3,4]", { ...base, sale_status_filter: [1, 2, 3, 4] }],
-  ["status [1]", { ...base, sale_status_filter: [1] }],
-  ["status []", { ...base, sale_status_filter: [] }],
-  ["sem status/desconto", (() => { const b = { ...base }; delete b.sale_status_filter; delete b.add_or_discount_filter; return b; })()],
-  ["sale_types numéricos", { ...base, id_sale_types: [1, 2, 3, 4], sale_status_filter: [1, 2, 3, 4] }],
-  ["sale_types []", { ...base, id_sale_types: [], sale_status_filter: [1, 2, 3, 4] }],
-  ["load_summary false", { ...base, load_summary: false, sale_status_filter: [1, 2, 3, 4] }],
-  ["total_rows 0", { ...base, total_rows: 0, sale_status_filter: [1, 2, 3, 4] }],
-  ["rownum_initial 0", { ...base, rownum_initial: 0, sale_status_filter: [1, 2, 3, 4] }],
-  ["janela 01→06/08", { ...base, start_date: "01/08/2026", end_date: "06/08/2026", sale_status_filter: [1, 2, 3, 4] }],
-];
+});
 
 async function main() {
   const s = await openSaiposSession();
   try {
-    const storeId = process.env.SAIPOS_DEBUG_STORE || s.storeIds[1] || s.storeIds[0];
-    console.log(`\n[dbg] loja ${storeId} · ${DATE}\n`);
-
-    // Filtro copiado da chamada real do app (espião de tela): sale types
-    // numéricos, arrays de canal vazios e — o detalhe que faltava — page pequena.
-    const real = (perPage) => ({
-      start_date: DATE,
-      end_date: DATE,
-      id_partner_sale: [],
-      id_store_shift: 0,
-      id_store_partner_sale: [],
-      id_store_site_data: [],
-      id_sale_types: [1, 2, 3, 4],
-      id_store_discount_coupon: 0,
-      rows_per_page: perPage,
-      rownum_initial: 1,
-      total_rows: null,
-      load_summary: true,
-      sale_status_filter: [1, 2, 3, 4],
-      add_or_discount_filter: [1, 2, 3],
-    });
-
-    // O app buscou na 49895 com end_date = dia seguinte. Testa as duas lojas
-    // e as duas janelas pra separar "filtro errado" de "loja sem dado".
-    const nextDay = (br) => {
-      const [d, m, y] = br.split("/");
-      const dt = new Date(`${y}-${m}-${d}T12:00:00Z`);
-      dt.setUTCDate(dt.getUTCDate() + 1);
-      const iso = dt.toISOString().slice(0, 10).split("-");
-      return `${iso[2]}/${iso[1]}/${iso[0]}`;
-    };
-
-    for (const loja of s.storeIds) {
-      for (const [rotulo, end] of [["mesmo dia", DATE], ["até o dia seguinte", nextDay(DATE)]]) {
-        const f = { ...real(25), end_date: end };
-        try {
-          const j = await s.get(loja, `sales-by-period?filter=${enc(f)}`);
-          const rows = j?.rows || [];
-          console.log(`  loja ${loja} · ${rotulo} → total=${j?.total ?? "?"} linhas=${rows.length}`);
-          if (rows.length) {
-            console.log(`     keys=${Object.keys(rows[0]).join(",")}`);
-            console.log(`     ex=${JSON.stringify(rows[0]).slice(0, 700)}`);
-          }
-        } catch (e) {
-          console.log(`  loja ${loja} · ${rotulo} → ERRO ${e.message.slice(0, 120)}`);
-        }
+    const headers = (await s.warmupReport("report/sales-by-period", "sales-by-period")) || s.headersForApi("app.report.sales-by-period");
+    const storeId = s.storeIds[0];
+    const casos = [
+      ["cru       · 25 · janela aberta", JSON.stringify(filtro(25, nextDay(DATE))), false],
+      ["encoded   · 25 · janela aberta", JSON.stringify(filtro(25, nextDay(DATE))), true],
+      ["cru       · 100· janela aberta", JSON.stringify(filtro(100, nextDay(DATE))), false],
+      ["cru       · 25 · janela fechada", JSON.stringify(filtro(25, DATE)), false],
+    ];
+    for (const [nome, json, encode] of casos) {
+      const qs = encode ? encodeURIComponent(json) : json;
+      const url = `https://api.saipos.com/v1/stores/${storeId}/sales-by-period?filter=${qs}`;
+      try {
+        const res = await s.page.request.get(url, { headers, timeout: 30000 });
+        const j = await res.json();
+        console.log(`  ${nome} → HTTP ${res.status()} total=${j?.total ?? "?"} linhas=${(j?.rows || []).length}`);
+      } catch (e) {
+        console.log(`  ${nome} → ERRO ${e.message.slice(0, 120)}`);
       }
     }
   } catch (e) {
