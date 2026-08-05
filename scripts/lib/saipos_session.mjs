@@ -106,8 +106,12 @@ export async function openSaiposSession() {
   if (!authHeader) throw new Error("não capturei o Authorization da sessão");
 
   // Headers de transporte o Playwright monta sozinho — mandar de volta quebra.
-  const headersForApi = () => {
+  // O backend usa x-source-context (o nome da tela que originou a chamada) pra
+  // decidir o que devolver: com o contexto errado, relatórios respondem 200 com
+  // lista vazia em vez de erro. Ex.: "app.report.sales-by-period".
+  const headersForApi = (context) => {
     const h = { ...(apiHeaders || {}) };
+    if (context) h["x-source-context"] = context;
     for (const k of Object.keys(h)) {
       if (/^(host|content-length|connection|accept-encoding)$/i.test(k) || k.startsWith(":")) delete h[k];
     }
@@ -115,10 +119,10 @@ export async function openSaiposSession() {
     return h;
   };
 
-  const get = async (storeId, path) => {
+  const get = async (storeId, path, opts = {}) => {
     const url = `https://api.saipos.com/v1/stores/${storeId}/${path}`;
     const res = await page.request.get(url, {
-      headers: headersForApi(),
+      headers: headersForApi(opts.context),
       timeout: 30000,
     });
     if (!res.ok()) {

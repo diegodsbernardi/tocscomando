@@ -92,11 +92,12 @@ async function getSalesByPeriod(s, storeId) {
   });
 
   const perPage = 100;
-  const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage))}`);
+  const CTX = { context: "app.report.sales-by-period" };
+  const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage))}`, CTX);
   const rows = [...(first?.rows || [])];
   const total = num(first?.total);
   for (let rownum = perPage + 1; rows.length < total; rownum += perPage) {
-    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage))}`);
+    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage))}`, CTX);
     const batch = j?.rows || [];
     if (!batch.length) break;
     rows.push(...batch);
