@@ -21,10 +21,11 @@
  *      SAIPOS_MAX_PROBES (default 120).
  */
 
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { openSaiposSession } from "./lib/saipos_session.mjs";
 
 const MAX_PROBES = Number(process.env.SAIPOS_MAX_PROBES || 120);
+const DUMP = process.env.SAIPOS_DUMP_BUNDLES !== "0"; // guarda os bundles do app como artifact
 
 // Ontem no fuso de SP: dia fechado, garante movimento no relatório.
 function defaultDateBR() {
@@ -195,6 +196,13 @@ async function main() {
         const res = await s.page.request.get(url, { timeout: 30000 });
         if (!res.ok()) continue;
         const body = await res.text();
+        // Guarda os bundles do app (não os de terceiros) pra análise offline:
+        // o hash é estável, então dá pra garimpar rota sem gastar run.
+        const file = url.split("/").pop().split("?")[0];
+        if (DUMP && /^(main|vendors|modules|core|runtime)\./.test(file)) {
+          mkdirSync("bundles", { recursive: true });
+          writeFileSync(`bundles/${file}`, body);
+        }
         const paths = extractPaths(body);
         report.bundles.push({ url, bytes: body.length, hits: paths.size });
         console.log(`[v2]   ${paths.size.toString().padStart(4)} candidatos · ${Math.round(body.length / 1024)}KB · ${url.split("/").pop()}`);

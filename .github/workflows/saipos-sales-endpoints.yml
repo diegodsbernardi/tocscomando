@@ -45,4 +45,5 @@ jobs:
           path: |
             saipos-endpoints.json
             saipos-v2-error.png
+            bundles/
           if-no-files-found: warn
