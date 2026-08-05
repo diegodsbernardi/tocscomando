@@ -83,7 +83,9 @@ function nextDay(br) {
  */
 async function getSalesByPeriod(s, storeId, CTX) {
   const PER_PAGE = 25;
-  const mk = (rownum) => ({
+  // Da 2ª página em diante o app manda o total já conhecido e desliga o
+  // summary — sem isso a página 2 volta vazia e a soma sai truncada.
+  const mk = (rownum, totalRows) => ({
     start_date: DATE,
     end_date: nextDay(DATE),
     id_partner_sale: [],
@@ -94,8 +96,8 @@ async function getSalesByPeriod(s, storeId, CTX) {
     id_store_discount_coupon: 0,
     rows_per_page: PER_PAGE,
     rownum_initial: rownum,
-    total_rows: null,
-    load_summary: true,
+    total_rows: totalRows ?? null,
+    load_summary: !totalRows,
     sale_status_filter: [1, 2, 3, 4],
     add_or_discount_filter: [1, 2, 3],
   });
@@ -104,7 +106,7 @@ async function getSalesByPeriod(s, storeId, CTX) {
   const rows = [...(first?.rows || [])];
   const total = num(first?.total);
   for (let rownum = PER_PAGE + 1; rows.length < total; rownum += PER_PAGE) {
-    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum))}`, CTX);
+    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, total))}`, CTX);
     const batch = j?.rows || [];
     if (!batch.length) break;
     rows.push(...batch);
