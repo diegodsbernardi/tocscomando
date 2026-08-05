@@ -124,6 +124,10 @@ async function main() {
       `find-consumed-ingredients?filter=${FILTER}`,
       `sales-by-period?filter=${FILTER}`,
       `sales-by-payment-type-by-day?filter=${FILTER}`,
+      // O resource de relatórios usa camelCase aqui — por isso nenhum chute pegou.
+      `itemsSold?filter=${FILTER}`,
+      `revenue-per-day?filter=${FILTER}`,
+      `sales-total-daily?filter=${FILTER}`,
     ];
 
     let sample = null; // primeira venda que aparecer, pra puxar o detalhe
