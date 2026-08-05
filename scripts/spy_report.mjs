@@ -22,7 +22,7 @@ async function main() {
     s.page.on("request", (req) => {
       const u = req.url();
       if (u.includes("api.saipos.com") && u.includes(MATCH)) {
-        captured.push({ method: req.method(), url: u, pretty: decodeURIComponent(u), postData: req.postData() });
+        captured.push({ method: req.method(), url: u, pretty: decodeURIComponent(u), headers: req.headers(), postData: req.postData() });
       }
     });
 
@@ -54,10 +54,14 @@ async function main() {
       const alvo = process.env.SAIPOS_DATE;
       const runUrl = async (rotulo, url) => {
         try {
-          const res = await s.page.request.get(url, {
-            headers: { authorization: s.authHeader },
-            timeout: 30000,
-          });
+          // Replica os headers da requisição do app (menos os de transporte,
+          // que o Playwright monta sozinho) — a resposta depende deles.
+          const h = { ...(hit.headers || {}) };
+          for (const k of Object.keys(h)) {
+            if (/^(host|content-length|connection|accept-encoding|:.*)$/i.test(k)) delete h[k];
+          }
+          h.authorization = h.authorization || s.authHeader;
+          const res = await s.page.request.get(url, { headers: h, timeout: 30000 });
           const j = await res.json();
           console.log(`  ${rotulo}: HTTP ${res.status()} total=${j?.total ?? "?"} linhas=${(j?.rows || []).length}`);
           if (j?.summary) console.log(`     summary=${JSON.stringify(j.summary).slice(0, 900)}`);
@@ -69,6 +73,7 @@ async function main() {
         }
       };
 
+      console.log(`[spy] headers da chamada real: ${Object.keys(hit.headers || {}).join(", ")}`);
       console.log(`[spy] reexecutando a chamada do app:`);
       await runUrl("url original", hit.url);
 
@@ -84,12 +89,12 @@ async function main() {
       }
     }
 
-    writeFileSync("saipos-spy.json", JSON.stringify(captured, null, 2));
+    writeFileSync("saipos-spy.json", JSON.stringify(captured.map((c) => ({ ...c, headers: Object.keys(c.headers || {}) })), null, 2));
     await s.page.screenshot({ path: "saipos-spy.png", fullPage: true }).catch(() => {});
   } catch (e) {
     console.error("[spy] falhou:", e.message);
     try {
-      writeFileSync("saipos-spy.json", JSON.stringify(captured, null, 2));
+      writeFileSync("saipos-spy.json", JSON.stringify(captured.map((c) => ({ ...c, headers: Object.keys(c.headers || {}) })), null, 2));
       await s.page.screenshot({ path: "saipos-spy.png", fullPage: true });
     } catch {}
     process.exitCode = 1;
