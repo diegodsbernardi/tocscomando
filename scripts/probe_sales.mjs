@@ -136,6 +136,20 @@ async function main() {
       out.tries.push({ path: v, status: r.status, ok: r.ok, shape: describe(r) });
       console.log(`  ${describe(r)}   ← ${v.split("?")[0]}${v.includes("?") ? "?" + v.split("?")[1].slice(0, 60) : ""}`);
       if (r.ok) {
+        // guarda uma amostra dos relatórios (é o que interessa pro CMV por prato)
+        if (/^(itemsSold|revenue-per-day|sales-total-daily)/.test(v)) {
+          const j = r.json;
+          out.samples = out.samples || {};
+          out.samples[v.split("?")[0]] = JSON.parse(
+            JSON.stringify(j, (k, val) => (Array.isArray(val) ? val.slice(0, 5) : val))
+          );
+          for (const [key, val] of Object.entries(j || {})) {
+            if (Array.isArray(val)) {
+              console.log(`      ↳ ${key}: ${val.length} linha(s)${val.length ? ` keys=${Object.keys(val[0]).join(",")}` : ""}`);
+              if (val.length) console.log(`         ex: ${JSON.stringify(val[0]).slice(0, 300)}`);
+            }
+          }
+        }
         const arr = Array.isArray(r.json) ? r.json : r.json ? [r.json] : [];
         if (arr.length && !sample) sample = arr[0];
         // já dá pra ver se a listagem traz itens embutidos
