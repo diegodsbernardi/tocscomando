@@ -31,6 +31,18 @@ const DATE = process.env.SAIPOS_DATE
   : defaultDateBR();
 
 // Campos que não interessam ao objetivo e não precisam ir pro log.
+const FILTER = encodeURIComponent(
+  JSON.stringify({
+    start_date: DATE.br,
+    end_date: DATE.br,
+    exclude_canceled: 1,
+    only_nfe: 0,
+    id_store_shift: 0,
+    id_sale_types: ["1", "2", "3", "4"],
+    id_user_stores: null,
+  })
+);
+
 const PRIVATE = /(customer|client|phone|fone|cpf|cnpj|address|endereco|street|complement|email|name_receiver)/i;
 
 function redact(obj) {
@@ -106,6 +118,12 @@ async function main() {
       `sales?from=clientweb&filter=${encodeURIComponent(JSON.stringify({ start_date: d, end_date: d, exclude_canceled: 1 }))}`,
       `sales/find-last-sale-by-store`,
       `sales/get-sales-with-generic-items`,
+      // Nomes reais dos relatórios, lidos do menu do app (StoreItemSoldController).
+      `store-item-sold?filter=${FILTER}`,
+      `consumed-ingredients?filter=${FILTER}`,
+      `find-consumed-ingredients?filter=${FILTER}`,
+      `sales-by-period?filter=${FILTER}`,
+      `sales-by-payment-type-by-day?filter=${FILTER}`,
     ];
 
     let sample = null; // primeira venda que aparecer, pra puxar o detalhe
