@@ -73,7 +73,7 @@ function nextDay(br) {
  *  · sem os headers de contexto do app a API responde 200 com lista vazia
  *    (não dá erro) — quem cuida disso é o openSaiposSession.
  */
-async function getSalesByPeriod(s, storeId) {
+async function getSalesByPeriod(s, storeId, CTX) {
   const mk = (rownum, perPage) => ({
     start_date: DATE,
     end_date: nextDay(DATE),
@@ -92,7 +92,6 @@ async function getSalesByPeriod(s, storeId) {
   });
 
   const perPage = 100;
-  const CTX = { context: "app.report.sales-by-period" };
   const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage))}`, CTX);
   const rows = [...(first?.rows || [])];
   const total = num(first?.total);
@@ -117,6 +116,9 @@ async function main() {
   const s = await openSaiposSession();
   const out = { date: DATE, stores: {} };
   try {
+    // Abre a tela do relatório uma vez e reusa os headers dela nas chamadas.
+    const hdrs = await s.warmupReport("report/sales-by-period", "sales-by-period");
+    const reportHeaders = hdrs ? { headers: hdrs } : { context: "app.report.sales-by-period" };
     for (const storeId of s.storeIds) {
       console.log(`\n${"=".repeat(60)}\n[conf] loja ${storeId} · ${DATE}\n${"=".repeat(60)}`);
 
@@ -144,7 +146,7 @@ async function main() {
       let sales = [];
       let summary = null;
       try {
-        const r = await getSalesByPeriod(s, storeId);
+        const r = await getSalesByPeriod(s, storeId, reportHeaders);
         sales = r.rows;
         summary = r.summary;
       } catch (e) {

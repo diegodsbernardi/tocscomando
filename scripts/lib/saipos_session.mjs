@@ -109,9 +109,8 @@ export async function openSaiposSession() {
   // O backend usa x-source-context (o nome da tela que originou a chamada) pra
   // decidir o que devolver: com o contexto errado, relatórios respondem 200 com
   // lista vazia em vez de erro. Ex.: "app.report.sales-by-period".
-  const headersForApi = (context) => {
-    const h = { ...(apiHeaders || {}) };
-    if (context) h["x-source-context"] = context;
+  const clean = (raw) => {
+    const h = { ...(raw || {}) };
     for (const k of Object.keys(h)) {
       if (/^(host|content-length|connection|accept-encoding)$/i.test(k) || k.startsWith(":")) delete h[k];
     }
@@ -119,10 +118,47 @@ export async function openSaiposSession() {
     return h;
   };
 
+  const headersForApi = (context) => {
+    const h = clean(apiHeaders);
+    if (context) h["x-source-context"] = context;
+    return h;
+  };
+
+  /**
+   * Abre uma tela do app e devolve os headers que ELA usa nas chamadas de API.
+   * Alguns relatórios só respondem com o conjunto completo (x-source-context +
+   * x-fingerprint, este gerado por JS na página) — forjar na mão não cola.
+   */
+  const warmupReport = async (route, match) => {
+    let found = null;
+    const onReq = (req) => {
+      const u = req.url();
+      if (u.includes("api.saipos.com") && u.includes(match)) found = req.headers();
+    };
+    page.on("request", onReq);
+    try {
+      await page.goto(`${baseUrl}/#/app/${route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(8000);
+      for (const sel of ['button:has-text("Buscar")', 'button:has-text("Pesquisar")', '[data-qa="search"]']) {
+        const btn = page.locator(sel).first();
+        if (await btn.count().catch(() => 0)) {
+          await btn.click().catch(() => {});
+          await page.waitForTimeout(6000);
+          break;
+        }
+      }
+      await page.waitForTimeout(3000);
+    } finally {
+      page.off("request", onReq);
+    }
+    console.log(`[saipos] warmup ${route}: ${found ? "headers capturados" : "NENHUMA chamada vista"}`);
+    return found ? clean(found) : null;
+  };
+
   const get = async (storeId, path, opts = {}) => {
     const url = `https://api.saipos.com/v1/stores/${storeId}/${path}`;
     const res = await page.request.get(url, {
-      headers: headersForApi(opts.context),
+      headers: opts.headers ? { ...clean(opts.headers), authorization: authHeader } : headersForApi(opts.context),
       timeout: 30000,
     });
     if (!res.ok()) {
@@ -135,6 +171,7 @@ export async function openSaiposSession() {
     page,
     authHeader,
     headersForApi,
+    warmupReport,
     storeIds,
     get,
     async close() {
