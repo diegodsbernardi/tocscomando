@@ -57,52 +57,59 @@ function extractRows(json) {
   return [];
 }
 
+/** Dia seguinte em DD/MM/YYYY. */
+function nextDay(br) {
+  const [d, m, y] = br.split("/");
+  const dt = new Date(`${y}-${m}-${d}T12:00:00Z`);
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  const [yy, mm, dd] = dt.toISOString().slice(0, 10).split("-");
+  return `${dd}/${mm}/${yy}`;
+}
+
+/**
+ * Vendas do dia, uma a uma. Dois detalhes que custaram caro:
+ *  · o intervalo é aberto no fim — start=end devolve zero, então pedimos
+ *    [dia, dia+1] e filtramos as linhas do dia aqui;
+ *  · sem os headers de contexto do app a API responde 200 com lista vazia
+ *    (não dá erro) — quem cuida disso é o openSaiposSession.
+ */
 async function getSalesByPeriod(s, storeId) {
-  // Filtro reconstruído do SalesByPeriodController: os arrays vazios são
-  // obrigatórios (o backend faz .find() neles e explode com 500 se faltarem).
-  // sale_status_filter: 1=todas 2=canceladas 3=não canceladas 4=com item cancelado
-  // add_or_discount_filter: 1=todas 2=com desconto 3=com acréscimo
-  const mk = (rownum, perPage, statusFilter) => ({
+  const mk = (rownum, perPage) => ({
     start_date: DATE,
-    end_date: DATE,
+    end_date: nextDay(DATE),
     id_partner_sale: [],
     id_store_shift: 0,
     id_store_partner_sale: [],
     id_store_site_data: [],
-    id_sale_types: ["1", "2", "3", "4"],
+    id_sale_types: [1, 2, 3, 4],
     id_store_discount_coupon: 0,
     rows_per_page: perPage,
     rownum_initial: rownum,
     total_rows: null,
     load_summary: true,
-    sale_status_filter: statusFilter,
+    sale_status_filter: [1, 2, 3, 4],
     add_or_discount_filter: [1, 2, 3],
   });
 
-  // [3] = só não canceladas, pra bater com o exclude_canceled do itemsSold.
-  const perPage = 500;
-  let statusFilter = [3];
-  let first;
-  try {
-    first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage, statusFilter))}`);
-  } catch (e) {
-    console.warn(`  sale_status_filter [3] falhou (${e.message.slice(0, 80)}) — tentando [1,2,3,4]`);
-    statusFilter = [1, 2, 3, 4];
-    first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage, statusFilter))}`);
-  }
-
-  console.log(`  sales-by-period respondeu: keys=${Object.keys(first || {}).join(",")}`);
-  const rows = [...extractRows(first)];
-  const total = num(first?.total) || rows.length;
-  const summary = first?.summary ?? first?.data?.summary;
-  if (summary) console.log(`  summary: ${JSON.stringify(summary).slice(0, 600)}`);
-  for (let rownum = perPage + 1; rows.length < total && rownum < total + perPage; rownum += perPage) {
-    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage, statusFilter))}`);
-    const batch = extractRows(j);
+  const perPage = 100;
+  const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage))}`);
+  const rows = [...(first?.rows || [])];
+  const total = num(first?.total);
+  for (let rownum = perPage + 1; rows.length < total; rownum += perPage) {
+    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage))}`);
+    const batch = j?.rows || [];
     if (!batch.length) break;
     rows.push(...batch);
   }
-  return rows;
+
+  // A janela pega o dia seguinte junto — fica só o dia pedido.
+  const alvo = DATE.split("/").reverse().join("-");
+  const doDia = rows.filter((r) => {
+    const ts = r.created_at || r.data_venda || "";
+    return String(ts).slice(0, 10) === alvo || String(ts).includes(DATE);
+  });
+  console.log(`  sales-by-period: ${rows.length} linha(s) na janela, ${doDia.length} em ${DATE}`);
+  return { rows: doDia.length ? doDia : rows, summary: first?.summary, todas: rows };
 }
 
 async function main() {
@@ -134,10 +141,19 @@ async function main() {
 
       // 3) venda a venda
       let sales = [];
+      let summary = null;
       try {
-        sales = await getSalesByPeriod(s, storeId);
+        const r = await getSalesByPeriod(s, storeId);
+        sales = r.rows;
+        summary = r.summary;
       } catch (e) {
         console.warn(`  sales-by-period falhou: ${e.message}`);
+      }
+      if (summary) {
+        console.log(`\n  resumo do Saipos para o período:`);
+        for (const k of ["sales_count", "sales_amount", "total_amount_items", "total_discount_amount", "total_increase_amount", "delivery_fee_amount", "service_charge_amount", "canceled_sales_amount"]) {
+          if (summary[k] != null) console.log(`    ${k.padEnd(26)} ${typeof summary[k] === "number" ? brl(summary[k]) : summary[k]}`);
+        }
       }
 
       if (!sales.length) {
@@ -178,7 +194,7 @@ async function main() {
           );
       }
 
-      out.stores[storeId] = { itemsTotal, caixa, totals, sales_count: sales.length };
+      out.stores[storeId] = { itemsTotal, caixa, totals, summary, sales_count: sales.length };
     }
     writeFileSync("saipos-conferencia.json", JSON.stringify(out, null, 2));
     console.log(`\n[conf] detalhe em saipos-conferencia.json`);

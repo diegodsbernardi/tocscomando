@@ -86,11 +86,18 @@ export async function openSaiposSession() {
   });
   const page = await context.newPage();
 
+  // Guardamos o conjunto COMPLETO de headers que o app manda pra api.saipos.com.
+  // Só o Authorization não basta: alguns relatórios (sales-by-period) respondem
+  // 200 com resultado vazio quando faltam os headers de contexto/fingerprint.
   let authHeader = null;
+  let apiHeaders = null;
   page.on("request", (req) => {
     if (req.url().includes("api.saipos.com")) {
-      const h = req.headers()["authorization"];
-      if (h) authHeader = h;
+      const hs = req.headers();
+      if (hs["authorization"]) {
+        authHeader = hs["authorization"];
+        apiHeaders = hs;
+      }
     }
   });
 
@@ -98,10 +105,20 @@ export async function openSaiposSession() {
   await page.waitForTimeout(4000); // deixa o app revelar o token
   if (!authHeader) throw new Error("não capturei o Authorization da sessão");
 
+  // Headers de transporte o Playwright monta sozinho — mandar de volta quebra.
+  const headersForApi = () => {
+    const h = { ...(apiHeaders || {}) };
+    for (const k of Object.keys(h)) {
+      if (/^(host|content-length|connection|accept-encoding)$/i.test(k) || k.startsWith(":")) delete h[k];
+    }
+    h.authorization = authHeader;
+    return h;
+  };
+
   const get = async (storeId, path) => {
     const url = `https://api.saipos.com/v1/stores/${storeId}/${path}`;
     const res = await page.request.get(url, {
-      headers: { authorization: authHeader },
+      headers: headersForApi(),
       timeout: 30000,
     });
     if (!res.ok()) {
@@ -113,6 +130,7 @@ export async function openSaiposSession() {
   return {
     page,
     authHeader,
+    headersForApi,
     storeIds,
     get,
     async close() {
