@@ -49,58 +49,38 @@ async function main() {
     const storeId = process.env.SAIPOS_DEBUG_STORE || s.storeIds[1] || s.storeIds[0];
     console.log(`\n[dbg] loja ${storeId} · ${DATE}\n`);
 
-    // Arrays vazios no filtro significam "nenhum canal", não "todos" — o app
-    // preenche com todos os parceiros/sites da loja. Busca os ids reais.
-    const ids = async (path, key) => {
-      try {
-        const j = await s.get(storeId, path);
-        const arr = Array.isArray(j) ? j : j?.rows || [];
-        if (arr.length) console.log(`  ${path}: ${arr.length} registro(s), keys=${Object.keys(arr[0]).slice(0, 10).join(",")}`);
-        return arr.map((r) => r[key]).filter((v) => v != null);
-      } catch (e) {
-        console.log(`  ${path} falhou: ${e.message.slice(0, 90)}`);
-        return [];
-      }
-    };
-
-    const partners = await ids("partners_sale", "id_partner_sale");
-    const storePartners = await ids("partners_sale", "id_store_partner_sale");
-    const sites = await ids("site_data", "id_store_site_data");
-    console.log(`  → id_partner_sale=[${partners.join(",")}]`);
-    console.log(`  → id_store_partner_sale=[${storePartners.join(",")}]`);
-    console.log(`  → id_store_site_data=[${sites.join(",")}]\n`);
-
-    const full = {
-      ...base,
+    // Filtro copiado da chamada real do app (espião de tela): sale types
+    // numéricos, arrays de canal vazios e — o detalhe que faltava — page pequena.
+    const real = (perPage) => ({
+      start_date: DATE,
+      end_date: DATE,
+      id_partner_sale: [],
+      id_store_shift: 0,
+      id_store_partner_sale: [],
+      id_store_site_data: [],
+      id_sale_types: [1, 2, 3, 4],
+      id_store_discount_coupon: 0,
+      rows_per_page: perPage,
+      rownum_initial: 1,
+      total_rows: null,
+      load_summary: true,
       sale_status_filter: [1, 2, 3, 4],
-      id_partner_sale: partners.length ? partners : [-1],
-      id_store_partner_sale: storePartners.length ? storePartners : [-1],
-      id_store_site_data: sites.length ? sites : [-1],
-    };
+      add_or_discount_filter: [1, 2, 3],
+    });
 
-    const tests = [
-      ["com ids reais", full],
-      ["com -1 (balcão/sem parceiro)", { ...full, id_partner_sale: [-1], id_store_partner_sale: [-1], id_store_site_data: [-1] }],
-      ["parceiros + -1", {
-        ...full,
-        id_partner_sale: [-1, ...partners],
-        id_store_partner_sale: [-1, ...storePartners],
-        id_store_site_data: [-1, ...sites],
-      }],
-    ];
-
-    for (const [name, filter] of tests) {
+    for (const perPage of [25, 50, 100, 200, 500]) {
       try {
-        const j = await s.get(storeId, `sales-by-period?filter=${enc(filter)}`);
+        const j = await s.get(storeId, `sales-by-period?filter=${enc(real(perPage))}`);
         const rows = j?.rows || [];
-        console.log(`  ${String(j?.total ?? "?").padStart(5)} total · ${String(rows.length).padStart(4)} linhas  ${name}`);
+        console.log(`  rows_per_page=${String(perPage).padStart(4)} → total=${j?.total ?? "?"} linhas=${rows.length}`);
         if (rows.length) {
-          console.log(`        keys=${Object.keys(rows[0]).join(",")}`);
-          console.log(`        ex=${JSON.stringify(rows[0]).slice(0, 500)}`);
+          console.log(`     keys=${Object.keys(rows[0]).join(",")}`);
+          console.log(`     ex=${JSON.stringify(rows[0]).slice(0, 600)}`);
+          if (j?.summary) console.log(`     summary=${JSON.stringify(j.summary).slice(0, 600)}`);
           break;
         }
       } catch (e) {
-        console.log(`    ERRO  ${name} → ${e.message.slice(0, 140)}`);
+        console.log(`  rows_per_page=${perPage} → ERRO ${e.message.slice(0, 120)}`);
       }
     }
   } catch (e) {
