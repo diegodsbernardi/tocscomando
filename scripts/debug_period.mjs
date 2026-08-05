@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Debug: por que a mesma query devolve 44 linhas pelo app e 0 por nós?
- * Testa encoding (JSON cru x percent-encoded), tamanho de página e janela.
- * Descartável. Somente GET.
+ * Debug: como trazer TODAS as vendas do dia (não só as 25 primeiras)?
+ * Testa tamanhos de página e formas de pedir a página 2. Descartável.
  */
 
 import { openSaiposSession } from "./lib/saipos_session.mjs";
@@ -17,9 +16,9 @@ function nextDay(br) {
   return `${dd}/${mm}/${yy}`;
 }
 
-const filtro = (perPage, end) => ({
+const mk = (perPage, rownum, totalRows, loadSummary) => ({
   start_date: DATE,
-  end_date: end,
+  end_date: nextDay(DATE),
   id_partner_sale: [],
   id_store_shift: 0,
   id_store_partner_sale: [],
@@ -27,9 +26,9 @@ const filtro = (perPage, end) => ({
   id_sale_types: [1, 2, 3, 4],
   id_store_discount_coupon: 0,
   rows_per_page: perPage,
-  rownum_initial: 1,
-  total_rows: null,
-  load_summary: true,
+  rownum_initial: rownum,
+  total_rows: totalRows ?? null,
+  load_summary: loadSummary ?? true,
   sale_status_filter: [1, 2, 3, 4],
   add_or_discount_filter: [1, 2, 3],
 });
@@ -37,25 +36,36 @@ const filtro = (perPage, end) => ({
 async function main() {
   const s = await openSaiposSession();
   try {
-    const headers = (await s.warmupReport("report/sales-by-period", "sales-by-period")) || s.headersForApi("app.report.sales-by-period");
+    const hdrs = await s.warmupReport("report/sales-by-period", "sales-by-period");
+    const CTX = hdrs ? { headers: hdrs } : { context: "app.report.sales-by-period" };
     const storeId = s.storeIds[0];
-    const casos = [
-      ["cru       · 25 · janela aberta", JSON.stringify(filtro(25, nextDay(DATE))), false],
-      ["encoded   · 25 · janela aberta", JSON.stringify(filtro(25, nextDay(DATE))), true],
-      ["cru       · 100· janela aberta", JSON.stringify(filtro(100, nextDay(DATE))), false],
-      ["cru       · 25 · janela fechada", JSON.stringify(filtro(25, DATE)), false],
-    ];
-    for (const [nome, json, encode] of casos) {
-      const qs = encode ? encodeURIComponent(json) : json;
-      const url = `https://api.saipos.com/v1/stores/${storeId}/sales-by-period?filter=${qs}`;
+    const enc = (o) => encodeURIComponent(JSON.stringify(o));
+
+    const run = async (nome, filtro) => {
       try {
-        const res = await s.page.request.get(url, { headers, timeout: 30000 });
-        const j = await res.json();
-        console.log(`  ${nome} → HTTP ${res.status()} total=${j?.total ?? "?"} linhas=${(j?.rows || []).length}`);
+        const j = await s.get(storeId, `sales-by-period?filter=${enc(filtro)}`, CTX);
+        const rows = j?.rows || [];
+        const ids = rows.length ? `${rows[0].id_sale}…${rows[rows.length - 1].id_sale}` : "-";
+        console.log(`  ${nome.padEnd(38)} total=${String(j?.total ?? "?").padStart(4)} linhas=${String(rows.length).padStart(3)}  ${ids}`);
+        return { total: Number(j?.total) || 0, rows };
       } catch (e) {
-        console.log(`  ${nome} → ERRO ${e.message.slice(0, 120)}`);
+        console.log(`  ${nome.padEnd(38)} ERRO ${e.message.slice(0, 90)}`);
+        return { total: 0, rows: [] };
       }
-    }
+    };
+
+    const baseline = await run("perPage 25 · rownum 1", mk(25, 1));
+    const T = baseline.total;
+    console.log(`\n  total de vendas na janela: ${T}\n`);
+
+    await run("perPage 25 · rownum 26", mk(25, 26));
+    await run("perPage 25 · rownum 26 · total_rows", mk(25, 26, T, false));
+    await run("perPage 25 · rownum 26 · summary on", mk(25, 26, T, true));
+    await run(`perPage ${T} (= total)`, mk(T, 1));
+    await run(`perPage ${T - 1}`, mk(T - 1, 1));
+    await run("perPage 50", mk(50, 1));
+    await run("perPage 40", mk(40, 1));
+    await run("perPage 26", mk(26, 1));
   } catch (e) {
     console.error("[dbg] falhou:", e.message);
     process.exitCode = 1;
