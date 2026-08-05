@@ -22,7 +22,7 @@ async function main() {
     s.page.on("request", (req) => {
       const u = req.url();
       if (u.includes("api.saipos.com") && u.includes(MATCH)) {
-        captured.push({ method: req.method(), url: decodeURIComponent(u), postData: req.postData() });
+        captured.push({ method: req.method(), url: u, pretty: decodeURIComponent(u), postData: req.postData() });
       }
     });
 
@@ -45,12 +45,44 @@ async function main() {
     await s.page.waitForTimeout(4000);
 
     console.log(`\n[spy] ${captured.length} chamada(s) capturada(s) com "${MATCH}":\n`);
-    captured.forEach((c, i) => {
-      console.log(`--- ${i + 1} · ${c.method}`);
-      console.log(c.url);
-      if (c.postData) console.log(`postData: ${c.postData.slice(0, 800)}`);
-      console.log("");
-    });
+    captured.forEach((c, i) => console.log(`--- ${i + 1} · ${c.method}\n${c.pretty}\n`));
+
+    // Reexecuta a URL EXATA do app (mesmo encoding) e depois troca só data/loja.
+    // Se a do app volta cheia e a nossa vazia, a diferença está no encoding.
+    const hit = captured.find((c) => c.method === "GET");
+    if (hit) {
+      const alvo = process.env.SAIPOS_DATE;
+      const runUrl = async (rotulo, url) => {
+        try {
+          const res = await s.page.request.get(url, {
+            headers: { authorization: s.authHeader },
+            timeout: 30000,
+          });
+          const j = await res.json();
+          console.log(`  ${rotulo}: HTTP ${res.status()} total=${j?.total ?? "?"} linhas=${(j?.rows || []).length}`);
+          if (j?.summary) console.log(`     summary=${JSON.stringify(j.summary).slice(0, 900)}`);
+          if ((j?.rows || []).length) console.log(`     keys=${Object.keys(j.rows[0]).join(",")}`);
+          return j;
+        } catch (e) {
+          console.log(`  ${rotulo}: ERRO ${e.message.slice(0, 140)}`);
+          return null;
+        }
+      };
+
+      console.log(`[spy] reexecutando a chamada do app:`);
+      await runUrl("url original", hit.url);
+
+      if (alvo) {
+        const datas = [...new Set((hit.pretty.match(/\d{2}\/\d{2}\/\d{4}/g) || []))];
+        let url = hit.url;
+        for (const d of datas) url = url.split(encodeURIComponent(d)).join(encodeURIComponent(alvo)).split(d).join(alvo);
+        await runUrl(`data ${alvo}`, url);
+        for (const loja of (process.env.SAIPOS_STORE_IDS || "49895,49897").split(",")) {
+          const u = url.replace(/\/stores\/\d+\//, `/stores/${loja.trim()}/`);
+          await runUrl(`data ${alvo} · loja ${loja.trim()}`, u);
+        }
+      }
+    }
 
     writeFileSync("saipos-spy.json", JSON.stringify(captured, null, 2));
     await s.page.screenshot({ path: "saipos-spy.png", fullPage: true }).catch(() => {});
