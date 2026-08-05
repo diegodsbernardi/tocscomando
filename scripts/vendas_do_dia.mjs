@@ -85,31 +85,56 @@ async function main() {
       await s.page.waitForTimeout(9000);
     }
 
-    // Sobe o tamanho da página: o rodapé tem 25 / 50 / 100.
-    for (const rotulo of ["100", "50"]) {
-      const b = s.page.locator(`button:has-text("${rotulo}"), .rows-per-page:has-text("${rotulo}")`).last();
-      if (await b.count().catch(() => 0)) {
-        console.log(`[dia] mudando para ${rotulo} linhas por página`);
-        await b.click({ timeout: 5000 }).catch(() => {});
-        await s.page.waitForTimeout(9000);
-        break;
+    const capturadas = () => new Set(respostas.flatMap((r) => (r.rows || []).map((x) => x.id_sale))).size;
+    const totalJanela = () => Math.max(...respostas.map((r) => num(r.total)), 0);
+
+    // Sobe o tamanho da página (o rodapé tem 25 / 50 / 100). Verifica se
+    // realmente subiu — o seletor por texto às vezes pega o elemento errado.
+    if (capturadas() < totalJanela()) {
+      for (const rotulo of ["100", "50"]) {
+        const antes = capturadas();
+        const botoes = s.page.getByText(rotulo, { exact: true });
+        const n = await botoes.count().catch(() => 0);
+        for (let i = n - 1; i >= 0; i--) {
+          await botoes.nth(i).click({ timeout: 4000 }).catch(() => {});
+          await s.page.waitForTimeout(7000);
+          if (capturadas() > antes) break;
+        }
+        console.log(`[dia] página de ${rotulo}: ${antes} → ${capturadas()} venda(s)`);
+        if (capturadas() >= totalJanela()) break;
       }
     }
 
-    // Se ainda faltar venda, avança as páginas.
-    for (let i = 0; i < 10; i++) {
-      const melhor = respostas.reduce((a, r) => ((r.rows || []).length > (a.rows || []).length ? r : a), { rows: [] });
-      const total = Math.max(...respostas.map((r) => num(r.total)), 0);
-      const vistas = new Set(respostas.flatMap((r) => (r.rows || []).map((x) => x.id_sale))).size;
-      if (vistas >= total || !total) break;
-      const prox = s.page.locator('[aria-label="Próxima"], [aria-label="Next"], button:has(md-icon:text("chevron_right"))').last();
-      if (!(await prox.count().catch(() => 0))) {
-        console.log(`[dia] sem botão de próxima página — parando com ${vistas}/${total}`);
+    // Ainda faltando? Avança página por página.
+    for (let i = 0; i < 12 && capturadas() < totalJanela(); i++) {
+      const antes = capturadas();
+      const seletores = [
+        '[aria-label="Próxima"]',
+        '[aria-label="Next"]',
+        'button:has(md-icon:text("chevron_right"))',
+        'md-icon:text("chevron_right")',
+        'button:has-text("›")',
+      ];
+      let clicou = false;
+      for (const sel of seletores) {
+        const el = s.page.locator(sel).last();
+        if (!(await el.count().catch(() => 0))) continue;
+        await el.click({ timeout: 4000 }).catch(() => {});
+        await s.page.waitForTimeout(7000);
+        clicou = true;
         break;
       }
-      console.log(`[dia] ${vistas}/${total} vendas — indo pra próxima página`);
-      await prox.click({ timeout: 5000 }).catch(() => {});
-      await s.page.waitForTimeout(8000);
+      if (!clicou || capturadas() === antes) {
+        console.log(`[dia] não consegui avançar de página (${capturadas()}/${totalJanela()})`);
+        // Diagnóstico pra próxima vez: o que existe de clicável no rodapé.
+        const textos = await s.page
+          .locator("button")
+          .allTextContents()
+          .catch(() => []);
+        console.log(`[dia] botões na tela: ${[...new Set(textos.map((t) => t.trim()).filter(Boolean))].slice(0, 25).join(" | ")}`);
+        break;
+      }
+      console.log(`[dia] ${antes} → ${capturadas()} de ${totalJanela()} venda(s)`);
     }
 
     // Junta tudo que veio, sem repetir venda.

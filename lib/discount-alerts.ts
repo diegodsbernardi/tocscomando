@@ -23,6 +23,16 @@ export const DIAS_RECORRENTE = 3;
 /** Desconto manual acumulado (R$) na janela a partir do qual vira "grave". */
 export const ACUMULADO_GRAVE = 500;
 
+/** Nomes das lojas no Saipos (o relatório só traz o id). */
+export const STORE_LABELS: Record<string, string> = {
+  "49895": "Loja 1 (DLV)",
+  "49897": "Loja 2 (LTDA)",
+};
+
+export function storeLabel(id: string): string {
+  return STORE_LABELS[id] ?? `Loja ${id}`;
+}
+
 export type StoreDiscountAlert = {
   storeId: string;
   /** Desconto manual acumulado na janela, em R$. */

@@ -7,6 +7,13 @@ import { brl, brlSplit } from "@/lib/format";
 import { getCurrentProfile, roleLabel } from "@/lib/profile";
 import { getPainelData, type DayPoint } from "@/lib/painel-stats";
 import { getCashAlerts, DIAS_RECORRENTE, type DrawerAlert } from "@/lib/cash-alerts";
+import {
+  getDiscountAlerts,
+  storeLabel,
+  PCT_ALERTA,
+  DIAS_RECORRENTE as DESC_DIAS_RECORRENTE,
+  type StoreDiscountAlert,
+} from "@/lib/discount-alerts";
 import { getSemanaData, SEMANAS_LOOKBACK, type WeekdayAvg } from "@/lib/semana-stats";
 import { getSangriaDestinos } from "@/lib/sangria-stats";
 
@@ -27,9 +34,10 @@ export default async function PainelPage() {
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "admin") redirect("/");
 
-  const [d, cashAlerts, semana, sangrias] = await Promise.all([
+  const [d, cashAlerts, discountAlerts, semana, sangrias] = await Promise.all([
     getPainelData(),
     getCashAlerts(),
+    getDiscountAlerts(),
     getSemanaData(),
     getSangriaDestinos(),
   ]);
@@ -190,6 +198,65 @@ export default async function PainelPage() {
                 período).
               </p>
             )}
+          </section>
+        )}
+
+        {/* DESCONTO NO PDV — só o manual (cupom de parceiro é promoção combinada) */}
+        {discountAlerts.stores.length > 0 && (
+          <section className="mt-2.5 rounded-card bg-white p-4 shadow-card reveal d4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-[0.5px] text-muted">
+                Desconto no PDV · últimos {discountAlerts.lookbackDays} dias
+              </span>
+              {discountAlerts.hasAlert && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    discountAlerts.stores.some((st) => st.grave)
+                      ? "bg-danger-bg text-danger"
+                      : "bg-warn-bg text-warn"
+                  }`}
+                >
+                  {discountAlerts.stores.some((st) => st.grave) ? "GRAVE" : "RECORRENTE"}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {discountAlerts.stores.map((st) => (
+                <DescontoRow key={st.storeId} alert={st} />
+              ))}
+            </div>
+
+            {discountAlerts.topSales.length > 0 && (
+              <div className="mt-3 border-t border-line pt-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.5px] text-muted">
+                  Maiores descontos manuais
+                </span>
+                <div className="mt-1.5 space-y-1">
+                  {discountAlerts.topSales.map((sale) => (
+                    <div
+                      key={`${sale.workDate}-${sale.storeId}-${sale.saleNumber}`}
+                      className="flex items-center justify-between gap-2 text-[12px]"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-navy">
+                        <span className="font-semibold">#{sale.saleNumber}</span>{" "}
+                        <span className="text-muted">
+                          {dateBR(sale.workDate, { day: "2-digit", month: "2-digit" })} ·{" "}
+                          {sale.discountReason?.trim() || "sem motivo"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 tabular-nums font-bold text-danger">
+                        −{brl(sale.discountAmount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-2 text-[11px] leading-snug text-muted">
+              Só desconto batido no PDV — cupom de iFood/parceiro não entra. Alerta
+              a partir de {PCT_ALERTA}% do valor de menu em {DESC_DIAS_RECORRENTE}+ dias.
+            </p>
           </section>
         )}
 
@@ -426,6 +493,26 @@ function QuebraRow({ alert }: { alert: DrawerAlert }) {
         {brl(alert.acumulado)}{" "}
         <span className="text-[11px] font-normal text-muted">
           em {alert.diasComQuebra} {alert.diasComQuebra === 1 ? "dia" : "dias"}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function DescontoRow({ alert }: { alert: StoreDiscountAlert }) {
+  const tone = alert.grave ? "text-danger" : alert.recorrente ? "text-warn" : "text-navy";
+  const dot = alert.grave ? "bg-danger" : alert.recorrente ? "bg-warn" : "bg-ok";
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="flex items-center gap-2 font-semibold text-navy">
+        <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+        {storeLabel(alert.storeId)}
+      </span>
+      <span className={`tabular-nums font-bold ${tone}`}>
+        {brl(alert.acumulado)}{" "}
+        <span className="text-[11px] font-normal text-muted">
+          · {alert.pct.toFixed(1)}% · {alert.diasAltos}{" "}
+          {alert.diasAltos === 1 ? "dia alto" : "dias altos"}
         </span>
       </span>
     </div>
