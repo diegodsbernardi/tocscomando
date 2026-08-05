@@ -48,18 +48,59 @@ async function main() {
   try {
     const storeId = process.env.SAIPOS_DEBUG_STORE || s.storeIds[1] || s.storeIds[0];
     console.log(`\n[dbg] loja ${storeId} · ${DATE}\n`);
-    for (const [name, filter] of variants) {
+
+    // Arrays vazios no filtro significam "nenhum canal", não "todos" — o app
+    // preenche com todos os parceiros/sites da loja. Busca os ids reais.
+    const ids = async (path, key) => {
+      try {
+        const j = await s.get(storeId, path);
+        const arr = Array.isArray(j) ? j : j?.rows || [];
+        if (arr.length) console.log(`  ${path}: ${arr.length} registro(s), keys=${Object.keys(arr[0]).slice(0, 10).join(",")}`);
+        return arr.map((r) => r[key]).filter((v) => v != null);
+      } catch (e) {
+        console.log(`  ${path} falhou: ${e.message.slice(0, 90)}`);
+        return [];
+      }
+    };
+
+    const partners = await ids("partners_sale", "id_partner_sale");
+    const storePartners = await ids("partners_sale", "id_store_partner_sale");
+    const sites = await ids("site_data", "id_store_site_data");
+    console.log(`  → id_partner_sale=[${partners.join(",")}]`);
+    console.log(`  → id_store_partner_sale=[${storePartners.join(",")}]`);
+    console.log(`  → id_store_site_data=[${sites.join(",")}]\n`);
+
+    const full = {
+      ...base,
+      sale_status_filter: [1, 2, 3, 4],
+      id_partner_sale: partners.length ? partners : [-1],
+      id_store_partner_sale: storePartners.length ? storePartners : [-1],
+      id_store_site_data: sites.length ? sites : [-1],
+    };
+
+    const tests = [
+      ["com ids reais", full],
+      ["com -1 (balcão/sem parceiro)", { ...full, id_partner_sale: [-1], id_store_partner_sale: [-1], id_store_site_data: [-1] }],
+      ["parceiros + -1", {
+        ...full,
+        id_partner_sale: [-1, ...partners],
+        id_store_partner_sale: [-1, ...storePartners],
+        id_store_site_data: [-1, ...sites],
+      }],
+    ];
+
+    for (const [name, filter] of tests) {
       try {
         const j = await s.get(storeId, `sales-by-period?filter=${enc(filter)}`);
         const rows = j?.rows || [];
         console.log(`  ${String(j?.total ?? "?").padStart(5)} total · ${String(rows.length).padStart(4)} linhas  ${name}`);
         if (rows.length) {
           console.log(`        keys=${Object.keys(rows[0]).join(",")}`);
-          console.log(`        ex=${JSON.stringify(rows[0]).slice(0, 400)}`);
-          break; // achou o filtro certo, não precisa continuar
+          console.log(`        ex=${JSON.stringify(rows[0]).slice(0, 500)}`);
+          break;
         }
       } catch (e) {
-        console.log(`    ERRO  ${name} → ${e.message.slice(0, 120)}`);
+        console.log(`    ERRO  ${name} → ${e.message.slice(0, 140)}`);
       }
     }
   } catch (e) {
