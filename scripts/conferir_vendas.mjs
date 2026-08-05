@@ -73,8 +73,17 @@ function nextDay(br) {
  *  · sem os headers de contexto do app a API responde 200 com lista vazia
  *    (não dá erro) — quem cuida disso é o openSaiposSession.
  */
+/**
+ * Vendas do dia, uma a uma. Três armadilhas do sales-by-period, todas
+ * descobertas na marra (a API responde 200 com lista vazia em vez de erro):
+ *  · a janela é aberta no fim — start_date == end_date devolve zero;
+ *  · rows_per_page tem que ser 25 (com 100 volta vazio), então paginamos de 25;
+ *  · x-source-context precisa ser o da tela do relatório — por isso o warmup.
+ * Como a janela pega o dia seguinte junto, filtramos por data aqui.
+ */
 async function getSalesByPeriod(s, storeId, CTX) {
-  const mk = (rownum, perPage) => ({
+  const PER_PAGE = 25;
+  const mk = (rownum) => ({
     start_date: DATE,
     end_date: nextDay(DATE),
     id_partner_sale: [],
@@ -83,7 +92,7 @@ async function getSalesByPeriod(s, storeId, CTX) {
     id_store_site_data: [],
     id_sale_types: [1, 2, 3, 4],
     id_store_discount_coupon: 0,
-    rows_per_page: perPage,
+    rows_per_page: PER_PAGE,
     rownum_initial: rownum,
     total_rows: null,
     load_summary: true,
@@ -91,25 +100,24 @@ async function getSalesByPeriod(s, storeId, CTX) {
     add_or_discount_filter: [1, 2, 3],
   });
 
-  const perPage = 100;
-  const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage))}`, CTX);
+  const first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1))}`, CTX);
   const rows = [...(first?.rows || [])];
   const total = num(first?.total);
-  for (let rownum = perPage + 1; rows.length < total; rownum += perPage) {
-    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage))}`, CTX);
+  for (let rownum = PER_PAGE + 1; rows.length < total; rownum += PER_PAGE) {
+    const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum))}`, CTX);
     const batch = j?.rows || [];
     if (!batch.length) break;
     rows.push(...batch);
   }
 
-  // A janela pega o dia seguinte junto — fica só o dia pedido.
-  const alvo = DATE.split("/").reverse().join("-");
-  const doDia = rows.filter((r) => {
-    const ts = r.created_at || r.data_venda || "";
-    return String(ts).slice(0, 10) === alvo || String(ts).includes(DATE);
-  });
-  console.log(`  sales-by-period: ${rows.length} linha(s) na janela, ${doDia.length} em ${DATE}`);
-  return { rows: doDia.length ? doDia : rows, summary: first?.summary, todas: rows };
+  // Data da venda no fuso do restaurante (created_at vem em UTC — uma venda das
+  // 21h em SP já é "amanhã" em UTC, e cairia no dia errado).
+  const spDate = (ts) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(ts));
+  const alvoISO = DATE.split("/").reverse().join("-");
+  const doDia = rows.filter((r) => r.created_at && spDate(r.created_at) === alvoISO);
+  console.log(`  sales-by-period: ${rows.length} venda(s) na janela, ${doDia.length} em ${DATE}`);
+  return { rows: doDia, summary: first?.summary, todas: rows };
 }
 
 async function main() {
@@ -153,7 +161,7 @@ async function main() {
         console.warn(`  sales-by-period falhou: ${e.message}`);
       }
       if (summary) {
-        console.log(`\n  resumo do Saipos para o período:`);
+        console.log(`\n  resumo do Saipos (janela ${DATE}→${nextDay(DATE)}, inclui o dia seguinte):`);
         for (const k of ["sales_count", "sales_amount", "total_amount_items", "total_discount_amount", "total_increase_amount", "delivery_fee_amount", "service_charge_amount", "canceled_sales_amount"]) {
           if (summary[k] != null) console.log(`    ${k.padEnd(26)} ${typeof summary[k] === "number" ? brl(summary[k]) : summary[k]}`);
         }
