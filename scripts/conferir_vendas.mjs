@@ -44,6 +44,19 @@ const brl = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", c
 const num = (v) => Number(String(v ?? 0).replace(",", ".")) || 0;
 const sum = (rows, f) => rows.reduce((a, r) => a + num(f(r)), 0);
 
+/** A resposta ora vem como {rows}, ora como {data:{rows}} — o app usa as duas. */
+function extractRows(json) {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json.rows)) return json.rows;
+  if (Array.isArray(json.data)) return json.data;
+  if (Array.isArray(json.data?.rows)) return json.data.rows;
+  for (const v of Object.values(json)) {
+    if (Array.isArray(v) && v.length && typeof v[0] === "object") return v;
+  }
+  return [];
+}
+
 async function getSalesByPeriod(s, storeId) {
   // Filtro reconstruído do SalesByPeriodController: os arrays vazios são
   // obrigatórios (o backend faz .find() neles e explode com 500 se faltarem).
@@ -78,12 +91,14 @@ async function getSalesByPeriod(s, storeId) {
     first = await s.get(storeId, `sales-by-period?filter=${enc(mk(1, perPage, statusFilter))}`);
   }
 
-  const rows = [...(first?.rows || [])];
-  const total = num(first?.total);
-  if (first?.summary) console.log(`  summary do relatório: ${JSON.stringify(first.summary).slice(0, 400)}`);
+  console.log(`  sales-by-period respondeu: keys=${Object.keys(first || {}).join(",")}`);
+  const rows = [...extractRows(first)];
+  const total = num(first?.total) || rows.length;
+  const summary = first?.summary ?? first?.data?.summary;
+  if (summary) console.log(`  summary: ${JSON.stringify(summary).slice(0, 600)}`);
   for (let rownum = perPage + 1; rows.length < total && rownum < total + perPage; rownum += perPage) {
     const j = await s.get(storeId, `sales-by-period?filter=${enc(mk(rownum, perPage, statusFilter))}`);
-    const batch = j?.rows || [];
+    const batch = extractRows(j);
     if (!batch.length) break;
     rows.push(...batch);
   }
