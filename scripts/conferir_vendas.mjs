@@ -119,6 +119,13 @@ async function getSalesByPeriod(s, storeId, CTX) {
   const alvoISO = DATE.split("/").reverse().join("-");
   const doDia = rows.filter((r) => r.created_at && spDate(r.created_at) === alvoISO);
   console.log(`  sales-by-period: ${rows.length} venda(s) na janela, ${doDia.length} em ${DATE}`);
+  // PENDENTE: a partir da 2ª página o backend devolve vazio mesmo replicando o
+  // que o app manda. Enquanto isso, dias com mais de 25 vendas ficam truncados —
+  // avisa em vez de deixar a soma parecer completa. O `summary` (agregado do
+  // período) continua correto e não depende de paginação.
+  if (rows.length < total) {
+    console.log(`  ⚠️  TRUNCADO: ${total} vendas na janela, só ${rows.length} baixadas — a soma venda-a-venda abaixo está incompleta. Use o resumo.`);
+  }
   return { rows: doDia, summary: first?.summary, todas: rows };
 }
 
