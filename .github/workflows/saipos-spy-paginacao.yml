@@ -1,0 +1,43 @@
+name: SAIPOS espiar paginacao
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Data do relatório (DD/MM/YYYY) — default ontem"
+        type: string
+        required: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checar credenciais
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+        run: '[ -n "$SAIPOS_USER" ] || { echo "::error::SAIPOS_USER não configurado."; exit 1; }'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Conferir itens x caixa
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          SAIPOS_DATE: ${{ inputs.date }}
+        run: node scripts/spy_pagina2.mjs
+      - name: Subir relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saipos-paginacao
+          path: |
+            saipos-paginacao.json
+            saipos-paginacao.png
+          if-no-files-found: warn
