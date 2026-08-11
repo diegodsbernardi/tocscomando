@@ -206,7 +206,7 @@ export default async function PainelPage() {
           <section className="mt-2.5 rounded-card bg-white p-4 shadow-card reveal d4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-[0.5px] text-muted">
-                Desconto no PDV · últimos {discountAlerts.lookbackDays} dias
+                Desconto de balcão · últimos {discountAlerts.lookbackDays} dias
               </span>
               {discountAlerts.hasAlert && (
                 <span
@@ -222,14 +222,17 @@ export default async function PainelPage() {
             </div>
             <div className="space-y-1.5">
               {discountAlerts.stores.map((st) => (
-                <DescontoRow key={st.storeId} alert={st} />
+                <div key={st.storeId}>
+                  <DescontoRow alert={st} />
+                  <CanaisRow alert={st} />
+                </div>
               ))}
             </div>
 
             {discountAlerts.topSales.length > 0 && (
               <div className="mt-3 border-t border-line pt-2">
                 <span className="text-[11px] font-bold uppercase tracking-[0.5px] text-muted">
-                  Maiores descontos manuais
+                  Maiores descontos de balcão
                 </span>
                 <div className="mt-1.5 space-y-1">
                   {discountAlerts.topSales.map((sale) => (
@@ -254,8 +257,16 @@ export default async function PainelPage() {
             )}
 
             <p className="mt-2 text-[11px] leading-snug text-muted">
-              Só desconto batido no PDV — cupom de iFood/parceiro não entra. Alerta
-              a partir de {PCT_ALERTA}% do valor de menu em {DESC_DIAS_RECORRENTE}+ dias.
+              Só desconto de venda sem parceiro — promoção do cardápio web e cupom
+              de iFood aparecem ao lado, mas não disparam alerta. Dispara a partir de{" "}
+              {PCT_ALERTA}% do valor de menu em {DESC_DIAS_RECORRENTE}+ dias.
+              {discountAlerts.diasSemClassificacao > 0 && (
+                <>
+                  {" "}
+                  {discountAlerts.diasSemClassificacao} dia(s) da janela foram
+                  capturados antes desta separação e ficaram de fora da conta.
+                </>
+              )}
             </p>
           </section>
         )}
@@ -515,6 +526,15 @@ function DescontoRow({ alert }: { alert: StoreDiscountAlert }) {
           {alert.diasAltos === 1 ? "dia alto" : "dias altos"}
         </span>
       </span>
+    </div>
+  );
+}
+
+function CanaisRow({ alert }: { alert: StoreDiscountAlert }) {
+  if (alert.web === 0 && alert.parceiro === 0) return null;
+  return (
+    <div className="pl-4 text-[11px] text-muted">
+      cardápio web {brl(alert.web)} · parceiro {brl(alert.parceiro)}
     </div>
   );
 }

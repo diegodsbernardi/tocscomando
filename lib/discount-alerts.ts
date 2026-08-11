@@ -3,12 +3,16 @@ import { todayISO } from "./dates";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Alerta de desconto no PDV.
+ * Alerta de desconto de balcão.
  *
- * O Saipos registra dois tipos de desconto na venda: o cupom do marketplace
- * (iFood e afins, que vem como "Voucher Parceiro Desconto" na forma de
- * pagamento) e o desconto batido à mão no PDV. O primeiro é promoção
- * combinada; o segundo é margem saindo sem rastro — e é o que alertamos.
+ * Desconto no Saipos vem de três lugares e só um merece alerta:
+ *   · parceiro     — cupom de iFood e afins, promoção da plataforma;
+ *   · cardápio web — promoção do delivery próprio, decisão de marketing;
+ *   · balcão       — venda sem parceiro, alguém apertou desconto no PDV.
+ *
+ * A primeira versão separava só pela forma de pagamento e contava o cardápio
+ * web como manual, o que inflava o alerta (em 04/08: R$ 193,50 "manual" que
+ * eram R$ 38,50 de balcão). Agora a classificação é pelo canal da venda.
  *
  * Fonte: saipos_daily_sales / saipos_discount_sales, populadas por
  * scripts/vendas_do_dia.mjs.
@@ -16,7 +20,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /** Janela de análise, em dias (inclui hoje). */
 export const LOOKBACK_DAYS = 14;
-/** % do valor de menu em desconto manual a partir do qual o dia vira "dia alto". */
+/** % do valor de menu em desconto de balcão a partir do qual o dia vira "dia alto". */
 export const PCT_ALERTA = 3;
 /** Nº de dias altos na janela a partir do qual vira "recorrente" (warn). */
 export const DIAS_RECORRENTE = 3;
@@ -35,8 +39,12 @@ export function storeLabel(id: string): string {
 
 export type StoreDiscountAlert = {
   storeId: string;
-  /** Desconto manual acumulado na janela, em R$. */
+  /** Desconto de balcão acumulado na janela, em R$. */
   acumulado: number;
+  /** Desconto do cardápio web na janela (informativo, não alerta). */
+  web: number;
+  /** Desconto de parceiro na janela (informativo, não alerta). */
+  parceiro: number;
   /** Valor de menu acumulado na janela, em R$. */
   itens: number;
   /** Desconto manual como % do valor de menu na janela. */
@@ -63,6 +71,8 @@ export type DiscountAlerts = {
   startDate: string;
   endDate: string;
   stores: StoreDiscountAlert[];
+  /** Dias na janela capturados antes da classificação por canal existir. */
+  diasSemClassificacao: number;
   /** As maiores vendas com desconto manual da janela, pra dar nome aos bois. */
   topSales: DiscountSale[];
   hasAlert: boolean;
@@ -86,13 +96,16 @@ export const getDiscountAlerts = cache(async (): Promise<DiscountAlerts> => {
     startDate,
     endDate,
     stores: [],
+    diasSemClassificacao: 0,
     topSales: [],
     hasAlert: false,
   };
 
   const { data, error } = await supabase
     .from("saipos_daily_sales")
-    .select("work_date, store_id, items_amount, manual_discount_amount")
+    .select(
+      "work_date, store_id, items_amount, manual_discount_amount, counter_discount_amount, web_discount_amount, partner_discount_amount",
+    )
     .gte("work_date", startDate)
     .lte("work_date", endDate);
   if (error || !data?.length) return vazio;
@@ -102,26 +115,48 @@ export const getDiscountAlerts = cache(async (): Promise<DiscountAlerts> => {
     store_id: string;
     items_amount: number | string | null;
     manual_discount_amount: number | string | null;
+    counter_discount_amount: number | string | null;
+    web_discount_amount: number | string | null;
+    partner_discount_amount: number | string | null;
   };
 
-  const byStore = new Map<string, { acumulado: number; itens: number; diasAltos: number }>();
+  const byStore = new Map<
+    string,
+    { acumulado: number; web: number; parceiro: number; itens: number; diasAltos: number }
+  >();
+  let diasSemClassificacao = 0;
+
   for (const row of data as Row[]) {
     const itens = n(row.items_amount);
-    const desc = n(row.manual_discount_amount);
+    const balcao = n(row.counter_discount_amount);
+    const web = n(row.web_discount_amount);
+    const parceiro = n(row.partner_discount_amount);
+
+    // Dias capturados antes da classificação por canal ficam com os três zerados
+    // e o legado preenchido. Contar como "zero de balcão" seria mentira — fora.
+    if (balcao === 0 && web === 0 && parceiro === 0 && n(row.manual_discount_amount) > 0) {
+      diasSemClassificacao += 1;
+      continue;
+    }
+
     let agg = byStore.get(row.store_id);
     if (!agg) {
-      agg = { acumulado: 0, itens: 0, diasAltos: 0 };
+      agg = { acumulado: 0, web: 0, parceiro: 0, itens: 0, diasAltos: 0 };
       byStore.set(row.store_id, agg);
     }
-    agg.acumulado += desc;
+    agg.acumulado += balcao;
+    agg.web += web;
+    agg.parceiro += parceiro;
     agg.itens += itens;
-    if (itens > 0 && (desc / itens) * 100 >= PCT_ALERTA) agg.diasAltos += 1;
+    if (itens > 0 && (balcao / itens) * 100 >= PCT_ALERTA) agg.diasAltos += 1;
   }
 
   const stores: StoreDiscountAlert[] = Array.from(byStore.entries())
     .map(([storeId, a]) => ({
       storeId,
       acumulado: a.acumulado,
+      web: a.web,
+      parceiro: a.parceiro,
       itens: a.itens,
       pct: a.itens > 0 ? (a.acumulado / a.itens) * 100 : 0,
       diasAltos: a.diasAltos,
@@ -138,7 +173,7 @@ export const getDiscountAlerts = cache(async (): Promise<DiscountAlerts> => {
     const { data: sales } = await supabase
       .from("saipos_discount_sales")
       .select("work_date, store_id, sale_number, sold_at, total_amount, discount_amount, discount_reason, payment_types")
-      .eq("is_partner_voucher", false)
+      .eq("channel", "balcao")
       .gte("work_date", startDate)
       .lte("work_date", endDate)
       .order("discount_amount", { ascending: false })
@@ -155,5 +190,5 @@ export const getDiscountAlerts = cache(async (): Promise<DiscountAlerts> => {
     }));
   }
 
-  return { lookbackDays: LOOKBACK_DAYS, startDate, endDate, stores, topSales, hasAlert };
+  return { lookbackDays: LOOKBACK_DAYS, startDate, endDate, stores, diasSemClassificacao, topSales, hasAlert };
 });
