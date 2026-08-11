@@ -163,20 +163,39 @@ async function main() {
     const servico = soma(validas, (v) => v.total_service_charge_amount);
     const liquido = soma(validas, (v) => v.total_amount);
 
-    // "Voucher Parceiro Desconto" = cupom do marketplace (iFood etc.), não é
-    // alguém dando desconto no balcão. Só o manual interessa pro alerta.
+    // Classificação por CANAL — a forma de pagamento sozinha engana: o Cardápio
+    // Web não marca "Voucher Parceiro", mas o desconto dele é promoção do
+    // delivery próprio, não alguém apertando desconto no balcão.
+    //   parceiro     → iFood e afins (cupom da plataforma)
+    //   cardapio_web → delivery próprio
+    //   balcao       → venda sem parceiro: é o desconto que merece alerta
     const ehVoucher = (v) => /voucher|parceiro/i.test(v.desc_payment_types || "");
+    const canal = (v) => {
+      const p = (v.desc_partner_sale || "").trim();
+      if (!p) return "balcao";
+      if (/card[áa]pio|site|web/i.test(p)) return "cardapio_web";
+      return "parceiro"; // iFood, Rappi, 99Food...
+    };
+
     const comDesconto = validas.filter((v) => num(v.total_discount) > 0);
+    const porCanal = (c) => comDesconto.filter((v) => canal(v) === c);
+    const descontoBalcao = soma(porCanal("balcao"), (v) => v.total_discount);
+    const descontoWeb = soma(porCanal("cardapio_web"), (v) => v.total_discount);
+    const descontoParceiro = soma(porCanal("parceiro"), (v) => v.total_discount);
+    // legado: o que a versão anterior chamava de "manual"
     const manuais = comDesconto.filter((v) => !ehVoucher(v));
     const descontoManual = soma(manuais, (v) => v.total_discount);
 
     console.log(`  itens ${brl(itens)} · desconto ${brl(desconto)} · acréscimo ${brl(acrescimo)} · entrega ${brl(entrega)} → total ${brl(liquido)}`);
     if (itens > 0) {
-      console.log(`  desconto total  ${brl(desconto)} = ${((desconto / itens) * 100).toFixed(1)}% do valor de menu (${comDesconto.length} venda(s))`);
-      console.log(`  desconto MANUAL ${brl(descontoManual)} = ${((descontoManual / itens) * 100).toFixed(1)}% (${manuais.length} venda(s), fora cupom de parceiro)`);
+      const pct = (x) => `${((x / itens) * 100).toFixed(1)}%`;
+      console.log(`  desconto total ${brl(desconto)} = ${pct(desconto)} do valor de menu (${comDesconto.length} venda(s))`);
+      console.log(`    · balcão (PDV)  ${brl(descontoBalcao)} = ${pct(descontoBalcao)} (${porCanal("balcao").length} venda(s)) ← o que vira alerta`);
+      console.log(`    · cardápio web  ${brl(descontoWeb)} = ${pct(descontoWeb)} (${porCanal("cardapio_web").length} venda(s))`);
+      console.log(`    · parceiro      ${brl(descontoParceiro)} = ${pct(descontoParceiro)} (${porCanal("parceiro").length} venda(s))`);
     }
     if (canceladas.length) console.log(`  ${canceladas.length} venda(s) cancelada(s), ${brl(soma(canceladas, (v) => v.total_amount))}`);
-    manuais
+    porCanal("balcao")
       .sort((a, b) => num(b.total_discount) - num(a.total_discount))
       .slice(0, 10)
       .forEach((v) =>
@@ -195,7 +214,10 @@ async function main() {
           sales_count: validas.length,
           items_amount: itens,
           discount_amount: desconto,
-          manual_discount_amount: descontoManual,
+          manual_discount_amount: descontoManual, // legado
+          counter_discount_amount: descontoBalcao,
+          web_discount_amount: descontoWeb,
+          partner_discount_amount: descontoParceiro,
           increase_amount: acrescimo,
           delivery_fee: entrega,
           service_charge: servico,
@@ -222,6 +244,8 @@ async function main() {
           discount_reason: v.discount_reason || null,
           payment_types: v.desc_payment_types || null,
           is_partner_voucher: ehVoucher(v),
+          partner_name: v.desc_partner_sale || null,
+          channel: canal(v),
           captured_at: new Date().toISOString(),
         }));
         const { error: e2 } = await supabase
