@@ -1,5 +1,11 @@
 name: SAIPOS discover (espião de endpoints)
 
+# O Saipos aceita uma sessão por usuário: dois workflows ao mesmo tempo
+# derrubam o login um do outro. Este grupo põe todos numa fila única.
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
 # Reconhecimento manual da API do Saipos (somente leitura / GET).
 # Roda só quando disparado à mão. Não grava nada — cospe um JSON de artifact.
 on:

@@ -1,12 +1,18 @@
 name: SAIPOS vendas do dia (descontos)
 
+# O Saipos aceita uma sessão por usuário: dois workflows ao mesmo tempo
+# derrubam o login um do outro. Este grupo põe todos numa fila única.
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
 on:
   # Cron em UTC (Brasil = UTC-3).
-  #  02:45 UTC = 23:45 BRT — fecha o dia corrente.
-  #  06:05 UTC = 03:05 BRT — repassa o dia anterior já fechado.
+  #  03:20 UTC = 00:20 BRT — fecha o dia corrente (já sem movimento).
+  #  06:50 UTC = 03:50 BRT — repassa o dia anterior já fechado.
   schedule:
-    - cron: "45 2 * * *"
-    - cron: "5 6 * * *"
+    - cron: "20 3 * * *"
+    - cron: "50 6 * * *"
 
   workflow_dispatch:
     inputs:
@@ -65,7 +71,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SAIPOS_DATE: ${{ inputs.date }}
-          SAIPOS_DAY_OFFSET: ${{ github.event.schedule == '5 6 * * *' && '-1' || '0' }}
+          SAIPOS_DAY_OFFSET: ${{ github.event.schedule == '50 6 * * *' && '-1' || '0' }}
           DRY_RUN: ${{ inputs.dry_run == true && '1' || '' }}
         run: node scripts/vendas_do_dia.mjs
 

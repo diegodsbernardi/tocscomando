@@ -101,9 +101,27 @@ export async function openSaiposSession() {
     }
   });
 
-  await login(page, baseUrl, user, pass, storeIds[0]);
-  await page.waitForTimeout(4000); // deixa o app revelar o token
-  if (!authHeader) throw new Error("não capturei o Authorization da sessão");
+  // O Saipos admite UMA sessão por usuário: se outro job logar no meio, este
+  // aqui é deslogado e o token nunca aparece. Em vez de morrer na hora, tenta
+  // de novo — a colisão dura o tempo do outro job pegar o que precisa.
+  const TENTATIVAS = Number(process.env.SAIPOS_LOGIN_TRIES || 3);
+  for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+    try {
+      await login(page, baseUrl, user, pass, storeIds[0]);
+      await page.waitForTimeout(4000); // deixa o app revelar o token
+    } catch (e) {
+      console.warn(`[saipos] login (tentativa ${tentativa}) falhou: ${e.message.slice(0, 120)}`);
+    }
+    if (authHeader) break;
+    if (tentativa < TENTATIVAS) {
+      const espera = 30000 * tentativa; // 30s, 60s
+      console.warn(`[saipos] sem Authorization (tentativa ${tentativa}/${TENTATIVAS}) — outra sessão pode ter assumido. Esperando ${espera / 1000}s`);
+      await page.waitForTimeout(espera);
+    }
+  }
+  if (!authHeader) {
+    throw new Error(`não capturei o Authorization da sessão após ${TENTATIVAS} tentativa(s)`);
+  }
 
   // Headers de transporte o Playwright monta sozinho — mandar de volta quebra.
   // O backend usa x-source-context (o nome da tela que originou a chamada) pra

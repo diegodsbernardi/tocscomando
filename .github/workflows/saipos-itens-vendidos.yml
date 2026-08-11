@@ -1,5 +1,11 @@
 name: SAIPOS itens vendidos
 
+# O Saipos aceita uma sessão por usuário: dois workflows ao mesmo tempo
+# derrubam o login um do outro. Este grupo põe todos numa fila única.
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
 on:
   # Cron em UTC. Brasil = UTC-3.
   #  02:40 UTC = 23:40 BRT — fecha o dia com o movimento quase todo.

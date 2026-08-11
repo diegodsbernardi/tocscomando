@@ -1,5 +1,11 @@
 name: SAIPOS itens sem ficha
 
+# O Saipos aceita uma sessão por usuário: dois workflows ao mesmo tempo
+# derrubam o login um do outro. Este grupo põe todos numa fila única.
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
 # Lista os itens sem ficha técnica (somente leitura). Disparo manual.
 on:
   workflow_dispatch:
