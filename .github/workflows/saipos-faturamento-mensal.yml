@@ -1,0 +1,61 @@
+name: SAIPOS faturamento mensal
+
+# O Saipos aceita uma sessão por usuário: entra na mesma fila dos outros robôs.
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      inicio:
+        description: "Mês inicial YYYY-MM (default 2024-01)"
+        type: string
+        required: false
+      fim:
+        description: "Mês final YYYY-MM (default mês corrente)"
+        type: string
+        required: false
+
+jobs:
+  faturamento:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checar credenciais Saipos
+        id: creds
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+        run: |
+          if [ -z "$SAIPOS_USER" ]; then
+            echo "::error::SAIPOS_USER não configurado."
+            exit 1
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Extrair faturamento mensal
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          FAT_INICIO: ${{ inputs.inicio }}
+          FAT_FIM: ${{ inputs.fim }}
+        run: node scripts/faturamento_mensal.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: faturamento-mensal
+          path: faturamento-mensal.csv
+          if-no-files-found: warn
