@@ -70,19 +70,37 @@ async function coletarLoja(storeId, lista, linhas) {
       } catch {}
     });
 
+    // O app é Angular com rota por hash: trocar só o hash não remonta a tela.
+    // Por isso o goto vem seguido de reload, e esperamos o campo de data
+    // aparecer de fato em vez de dormir um tempo fixo.
     const base = (process.env.SAIPOS_BASE_URL || "https://app.saipos.com").replace(/\/$/, "");
+    const SEL_DATA = '.md-datepicker-input, input[type="date"], md-datepicker input';
+
     await s.page.goto(`${base}/#/app/report/sales-by-period`, {
       waitUntil: "domcontentloaded",
       timeout: 60000,
     });
-    await s.page.waitForTimeout(9000);
+    await s.page.waitForTimeout(4000);
+    await s.page.reload({ waitUntil: "domcontentloaded", timeout: 60000 }).catch(() => {});
+    await s.page.waitForSelector(SEL_DATA, { timeout: 60000 }).catch(() => {});
+    await s.page.waitForTimeout(4000);
 
-    const inputs = s.page.locator('.md-datepicker-input, input[type="date"], md-datepicker input');
-    const qtd = await inputs.count().catch(() => 0);
+    const inputs = s.page.locator(SEL_DATA);
+    let qtd = await inputs.count().catch(() => 0);
+    if (qtd < 2) {
+      // Segunda tentativa: às vezes o primeiro carregamento cai no kanban.
+      console.log(`[desc] loja ${storeId}: ${qtd} campo(s) — recarregando a tela`);
+      await s.page.goto(`${base}/#/app/report/sales-by-period`, { waitUntil: "networkidle", timeout: 60000 }).catch(() => {});
+      await s.page.waitForSelector(SEL_DATA, { timeout: 60000 }).catch(() => {});
+      await s.page.waitForTimeout(5000);
+      qtd = await inputs.count().catch(() => 0);
+    }
     if (qtd < 2) {
       console.log(`[desc] loja ${storeId}: não achei os campos de data (${qtd}) — abortando esta loja`);
+      console.log(`[desc] URL atual: ${s.page.url()}`);
       return;
     }
+    console.log(`[desc] loja ${storeId}: ${qtd} campos de data — começando`);
 
     for (const ym of lista) {
       const { start, end } = janela(ym);
