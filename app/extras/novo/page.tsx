@@ -5,6 +5,8 @@ import { TopBar } from "@/components/ui/TopBar";
 import { ExtraPicker } from "@/components/ExtraPicker";
 import { createExtra } from "../actions";
 import { isoWeekRange, isoToday } from "@/lib/vinculo";
+import { AvisoClimaExtra } from "@/components/AvisoClimaExtra";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,9 @@ export default async function NovoExtraPage() {
   return (
     <Shell>
       <TopBar title="Novo extra" subtitle="quem trabalhou hoje?" backHref="/extras" />
+      <Suspense fallback={null}>
+        <AvisoClimaExtra />
+      </Suspense>
       <div className="mt-2 px-4">
         <ExtraPicker
           employees={(employees || []).map((e) => ({

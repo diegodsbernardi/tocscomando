@@ -15,6 +15,7 @@ import { SuggestionsCard } from "@/components/dashboard/SuggestionsCard";
 import { DrawerSwitcher } from "@/components/DrawerSwitcher";
 import { ShiftNotesCard } from "@/components/dashboard/ShiftNotesCard";
 import { ChecklistCard } from "@/components/dashboard/ChecklistCard";
+import { PrevisaoCard } from "@/components/dashboard/PrevisaoCard";
 import { OperatorHero } from "@/components/dashboard/OperatorHero";
 import { createClient } from "@/lib/supabase/server";
 import { firstName, greetingForNow } from "@/lib/format";
@@ -102,6 +103,11 @@ export default async function HomePage() {
       {isAdmin && (
         <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[104px] rounded-card" />}>
           <ExtrasMiniCard />
+        </Suspense>
+      )}
+      {isAdmin && (
+        <Suspense fallback={<Skeleton className="mx-4 mt-4 h-[180px] rounded-card" />}>
+          <PrevisaoCard />
         </Suspense>
       )}
       <SuggestionsCard />
