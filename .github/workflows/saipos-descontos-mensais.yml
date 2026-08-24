@@ -1,0 +1,45 @@
+name: SAIPOS descontos mensais
+
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      inicio:
+        description: "Mês inicial YYYY-MM (default 2025-01)"
+        type: string
+        required: false
+      fim:
+        description: "Mês final YYYY-MM (default mês corrente)"
+        type: string
+        required: false
+
+jobs:
+  descontos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Extrair descontos mensais
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          DESC_INICIO: ${{ inputs.inicio }}
+          DESC_FIM: ${{ inputs.fim }}
+        run: node scripts/descontos_mensais.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: descontos-mensais
+          path: descontos-mensais.csv
+          if-no-files-found: warn
