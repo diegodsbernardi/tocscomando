@@ -20,7 +20,7 @@ on:
 jobs:
   faturamento:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checar credenciais Saipos
         id: creds

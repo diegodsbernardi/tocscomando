@@ -53,13 +53,13 @@ function janela(ym) {
   return { start: `01/${mm}/${y}`, end: `${ultimo}/${mm}/${y}` };
 }
 
-function filtro(start, end) {
+function filtro(start, end, onlyNfe = 0) {
   return encodeURIComponent(
     JSON.stringify({
       start_date: start,
       end_date: end,
       exclude_canceled: 1,
-      only_nfe: 0,
+      only_nfe: onlyNfe,
       id_store_shift: 0,
       id_sale_types: ["1", "2", "3", "4"],
       id_user_stores: null,
@@ -80,6 +80,8 @@ async function main() {
         const { start, end } = janela(ym);
         let total = 0;
         let vendas = 0;
+        let totalNfe = 0;
+        let notas = 0;
         let erro = null;
         try {
           const rows = await s.get(storeId, `sales-by-payment-type?filter=${filtro(start, end)}`);
@@ -89,9 +91,19 @@ async function main() {
         } catch (e) {
           erro = e.message.slice(0, 120);
         }
-        resultado.push({ storeId, ym, total, vendas, erro });
+        // Segunda passada com only_nfe=1: quantas dessas vendas saíram com nota.
+        try {
+          const rows = await s.get(storeId, `sales-by-payment-type?filter=${filtro(start, end, 1)}`);
+          const arr = Array.isArray(rows) ? rows : [];
+          totalNfe = arr.length ? Number(arr[0].total_saled) || 0 : 0;
+          notas = arr.length ? Number(arr[0].count_sales) || 0 : 0;
+        } catch (e) {
+          erro = (erro ? erro + " | " : "") + "nfe: " + e.message.slice(0, 80);
+        }
+        const pct = vendas > 0 ? (notas / vendas) * 100 : 0;
+        resultado.push({ storeId, ym, total, vendas, totalNfe, notas, erro });
         console.log(
-          `  loja ${storeId} · ${ym} · ${brl(total).padStart(14)} · ${String(vendas).padStart(5)} vendas${erro ? ` · ERRO ${erro}` : ""}`,
+          `  loja ${storeId} · ${ym} · ${brl(total).padStart(14)} · ${String(vendas).padStart(5)} vendas · notas ${String(notas).padStart(5)} (${pct.toFixed(0).padStart(3)}%) · ${brl(totalNfe).padStart(14)} com nota${erro ? ` · ERRO ${erro}` : ""}`,
         );
         // Respiro entre chamadas — a API do Saipos não gosta de rajada.
         await new Promise((r) => setTimeout(r, 700));
@@ -111,19 +123,33 @@ async function main() {
     porMes.set(r.ym, cur);
   }
   const linhas = [
-    ["mes", ...lojas.flatMap((l) => [`loja_${l}_faturamento`, `loja_${l}_vendas`]), "total"].join(";"),
+    [
+      "mes",
+      ...lojas.flatMap((l) => [
+        `loja_${l}_faturamento`,
+        `loja_${l}_vendas`,
+        `loja_${l}_notas`,
+        `loja_${l}_faturamento_com_nota`,
+      ]),
+      "total",
+      "total_notas",
+    ].join(";"),
   ];
   for (const ym of meses(INICIO, FIM)) {
     const m = porMes.get(ym) || {};
     const soma = lojas.reduce((a, l) => a + (m[l]?.total || 0), 0);
+    const somaNotas = lojas.reduce((a, l) => a + (m[l]?.notas || 0), 0);
     linhas.push(
       [
         ym,
         ...lojas.flatMap((l) => [
           (m[l]?.total || 0).toFixed(2).replace(".", ","),
           m[l]?.vendas || 0,
+          m[l]?.notas || 0,
+          (m[l]?.totalNfe || 0).toFixed(2).replace(".", ","),
         ]),
         soma.toFixed(2).replace(".", ","),
+        somaNotas,
       ].join(";"),
     );
   }
@@ -138,6 +164,24 @@ async function main() {
     const soma = lojas.reduce((a, l) => a + (m[l]?.total || 0), 0);
     console.log(
       [ym, ...lojas.map((l) => brl(m[l]?.total || 0).padStart(14)), brl(soma).padStart(14)].join(" | "),
+    );
+  }
+
+  console.log("\n===== NOTAS GERADAS (only_nfe) =====");
+  console.log(["mes", ...lojas.map((l) => `loja ${l}`), "total"].join(" | "));
+  for (const ym of meses(INICIO, FIM)) {
+    const m = porMes.get(ym) || {};
+    const somaNotas = lojas.reduce((a, l) => a + (m[l]?.notas || 0), 0);
+    console.log(
+      [
+        ym,
+        ...lojas.map((l) => {
+          const r = m[l];
+          const pct = r && r.vendas > 0 ? ((r.notas / r.vendas) * 100).toFixed(0) : "-";
+          return `${String(r?.notas || 0).padStart(5)} de ${String(r?.vendas || 0).padStart(5)} (${String(pct).padStart(3)}%)`;
+        }),
+        String(somaNotas).padStart(6),
+      ].join(" | "),
     );
   }
   const anos = new Map();
