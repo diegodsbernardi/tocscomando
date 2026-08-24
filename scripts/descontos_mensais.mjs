@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Descontos e ticket MENSAL por loja — para separar movimento de faturamento.
+ * Descontos, ticket e movimento MENSAL por loja — pela TELA do Saipos.
  *
- * Fonte: sales-by-period com load_summary. O summary do relatório traz, para a
- * janela pedida: nº de vendas, valor de menu (itens), desconto, acréscimo,
- * taxa de entrega e serviço. Uma chamada por loja por mês.
+ * Por que pela tela e não pela API: o backend assina a query (x-fingerprint).
+ * Um filtro montado por nós devolve 200 com total=0 — foi o que aconteceu na
+ * primeira versão deste script. Então quem monta a busca é a própria tela:
+ * preenchemos as datas do mês, clicamos Buscar e capturamos o `summary` da
+ * resposta, que já vem agregado (não precisa paginar as vendas).
  *
- * Os headers vêm do warmup da própria tela (o backend assina a query); se o
- * summary voltar vazio, o log avisa em vez de fingir que o mês foi zero.
+ * Uma sessão por loja (o Saipos entra numa loja por login).
  *
  * Só leitura. Env: SAIPOS_USER, SAIPOS_PASS, SAIPOS_STORE_IDS,
  *                  DESC_INICIO / DESC_FIM (YYYY-MM), DESC_SAIDA.
@@ -37,12 +38,12 @@ function meses(de, ate) {
   return out;
 }
 
-/** Janela DD/MM/YYYY do mês. O fim é exclusivo no relatório, então vai dia 1 do mês seguinte. */
+/** Início e fim do mês em DD/MM/YYYY. A janela do relatório é fechada nas duas pontas. */
 function janela(ym) {
   const [y, m] = ym.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const mm = String(m).padStart(2, "0");
-  const prox = m === 12 ? `01/01/${y + 1}` : `01/${String(m + 1).padStart(2, "0")}/${y}`;
-  return { start: `01/${mm}/${y}`, end: prox };
+  return { start: `01/${mm}/${y}`, end: `${ultimo}/${mm}/${y}` };
 }
 
 const CAMPOS = [
@@ -53,81 +54,92 @@ const CAMPOS = [
   "delivery_fee_amount",
   "service_charge_amount",
   "sales_amount",
-  "canceled_sales_amount",
 ];
 
-async function main() {
-  const lista = meses(INICIO, FIM);
+async function coletarLoja(storeId, lista, linhas) {
+  process.env.SAIPOS_STORE_IDS = storeId; // a sessão entra nesta loja
   const s = await openSaiposSession();
-  const linhas = [];
+  const respostas = [];
 
   try {
-    const hdrs = await s.warmupReport("report/sales-by-period", "sales-by-period");
-    const CTX = hdrs ? { headers: hdrs } : { context: "app.report.sales-by-period" };
-    console.log(`[desc] ${s.storeIds.length} lojas x ${lista.length} meses\n`);
+    s.page.on("response", async (res) => {
+      if (!res.url().includes("sales-by-period")) return;
+      try {
+        const j = await res.json();
+        if (j && j.summary) respostas.push(j.summary);
+      } catch {}
+    });
 
-    let mostrouCru = false;
-    for (const storeId of s.storeIds) {
-      for (const ym of lista) {
-        const { start, end } = janela(ym);
-        const filtro = encodeURIComponent(
-          JSON.stringify({
-            start_date: start,
-            end_date: end,
-            id_partner_sale: [],
-            id_store_shift: 0,
-            id_store_partner_sale: [],
-            id_store_site_data: [],
-            id_sale_types: [1, 2, 3, 4],
-            id_store_discount_coupon: 0,
-            rows_per_page: 1,
-            rownum_initial: 1,
-            total_rows: null,
-            load_summary: true,
-            sale_status_filter: [1, 2, 3, 4],
-            add_or_discount_filter: [1, 2, 3],
-          }),
-        );
-        try {
-          const j = await s.get(storeId, `sales-by-period?filter=${filtro}`, CTX);
-          const sm = j?.summary;
-          if (!sm) {
-            console.log(`  loja ${storeId} · ${ym} · SEM SUMMARY (total=${j?.total ?? "?"})`);
-            linhas.push({ storeId, ym, vazio: true });
-            continue;
-          }
-          if (!mostrouCru) {
-            console.log(`  [summary bruto] ${JSON.stringify(sm)}\n`);
-            mostrouCru = true;
-          }
-          const r = { storeId, ym };
-          for (const c of CAMPOS) r[c] = num(sm[c]);
-          const ticket = r.sales_count ? r.sales_amount / r.sales_count : 0;
-          const pctDesc = r.total_amount_items ? (r.total_discount_amount / r.total_amount_items) * 100 : 0;
-          linhas.push(r);
-          console.log(
-            `  loja ${storeId} · ${ym} · ${String(r.sales_count).padStart(5)} vendas · itens ${brl(r.total_amount_items).padStart(14)} · desconto ${brl(r.total_discount_amount).padStart(12)} (${pctDesc.toFixed(1).padStart(4)}%) · ticket ${brl(ticket)}`,
-          );
-        } catch (e) {
-          console.log(`  loja ${storeId} · ${ym} · ERRO ${e.message.slice(0, 100)}`);
-          linhas.push({ storeId, ym, vazio: true });
-        }
-        await new Promise((r) => setTimeout(r, 600));
+    const base = (process.env.SAIPOS_BASE_URL || "https://app.saipos.com").replace(/\/$/, "");
+    await s.page.goto(`${base}/#/app/report/sales-by-period`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    await s.page.waitForTimeout(9000);
+
+    const inputs = s.page.locator('.md-datepicker-input, input[type="date"], md-datepicker input');
+    const qtd = await inputs.count().catch(() => 0);
+    if (qtd < 2) {
+      console.log(`[desc] loja ${storeId}: não achei os campos de data (${qtd}) — abortando esta loja`);
+      return;
+    }
+
+    for (const ym of lista) {
+      const { start, end } = janela(ym);
+      const antes = respostas.length;
+
+      for (const [i, valor] of [[0, start], [1, end]]) {
+        const el = inputs.nth(i);
+        await el.click({ timeout: 5000 }).catch(() => {});
+        await el.fill("").catch(() => {});
+        await el.type(valor, { delay: 55 }).catch(() => {});
+        await s.page.keyboard.press("Escape").catch(() => {});
       }
-      console.log("");
+
+      const buscar = s.page.locator('button:has-text("Buscar")').first();
+      if (await buscar.count().catch(() => 0)) {
+        await buscar.click().catch(() => {});
+      }
+      // Mês inteiro demora mais que um dia — dá tempo do relatório voltar.
+      await s.page.waitForTimeout(12000);
+
+      const sm = respostas.length > antes ? respostas[respostas.length - 1] : null;
+      if (!sm) {
+        console.log(`  loja ${storeId} · ${ym} · SEM RESPOSTA`);
+        linhas.push({ storeId, ym, vazio: true });
+        continue;
+      }
+      const r = { storeId, ym };
+      for (const c of CAMPOS) r[c] = num(sm[c]);
+      const ticket = r.sales_count ? r.sales_amount / r.sales_count : 0;
+      const pct = r.total_amount_items ? (r.total_discount_amount / r.total_amount_items) * 100 : 0;
+      linhas.push(r);
+      console.log(
+        `  loja ${storeId} · ${ym} · ${String(r.sales_count).padStart(5)} vendas · itens ${brl(r.total_amount_items).padStart(14)} · desconto ${brl(r.total_discount_amount).padStart(12)} (${pct.toFixed(1).padStart(4)}%) · ticket ${brl(ticket)}`,
+      );
     }
   } finally {
     await s.close();
   }
+}
+
+async function main() {
+  const lista = meses(INICIO, FIM);
+  const lojas = (process.env.SAIPOS_STORE_IDS || "49895,49897").split(",").map((x) => x.trim());
+  const linhas = [];
+
+  console.log(`[desc] ${lojas.length} lojas x ${lista.length} meses (${INICIO} → ${FIM})\n`);
+  for (const loja of lojas) {
+    await coletarLoja(loja, lista, linhas);
+    console.log("");
+  }
 
   const csv = ["loja;mes;" + CAMPOS.join(";") + ";ticket_medio;pct_desconto"];
   for (const r of linhas) {
-    if (r.vazio) { csv.push(`${r.storeId};${r.ym};;;;;;;;;`); continue; }
+    if (r.vazio) { csv.push(`${r.storeId};${r.ym};;;;;;;;`); continue; }
     const ticket = r.sales_count ? r.sales_amount / r.sales_count : 0;
     const pct = r.total_amount_items ? (r.total_discount_amount / r.total_amount_items) * 100 : 0;
-    csv.push(
-      [r.storeId, r.ym, ...CAMPOS.map((c) => r[c].toFixed(2)), ticket.toFixed(2), pct.toFixed(2)].join(";"),
-    );
+    csv.push([r.storeId, r.ym, ...CAMPOS.map((c) => r[c].toFixed(2)), ticket.toFixed(2), pct.toFixed(2)].join(";"));
   }
   writeFileSync(SAIDA, csv.join("\n") + "\n", "utf8");
   console.log(`[desc] CSV salvo em ${SAIDA}`);
