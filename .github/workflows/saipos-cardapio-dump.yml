@@ -42,7 +42,7 @@ jobs:
         with:
           name: cardapio-dump
           path: |
-            items.json
-            ingredients.json
+            items-*.json
+            ingredients-*.json
             vendas-item.csv
           if-no-files-found: warn

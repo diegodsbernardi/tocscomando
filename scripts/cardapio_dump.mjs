@@ -50,19 +50,20 @@ async function main() {
   const linhas = [];
 
   try {
-    const loja0 = s.storeIds[0];
-
-    // Cardápio e insumos vêm de uma loja só — o catálogo é compartilhado.
-    for (const [path, arquivo] of [["items", "items.json"], ["ingredients", "ingredients.json"]]) {
-      try {
-        const j = await s.get(loja0, path);
-        const arr = Array.isArray(j) ? j : j?.rows || [];
-        writeFileSync(arquivo, JSON.stringify(arr), "utf8");
-        console.log(`[card] ${path}: ${arr.length} registro(s) → ${arquivo}`);
-        if (arr[0]) console.log(`   campos: ${Object.keys(arr[0]).slice(0, 22).join(", ")}`);
-      } catch (e) {
-        console.log(`[card] ${path} falhou: ${e.message.slice(0, 100)}`);
-        writeFileSync(arquivo, "[]", "utf8");
+    // Cada loja tem catálogo próprio — o salão vende coisa que o delivery não
+    // vende (chopp, porção fracionada). Por isso baixamos os dois.
+    for (const loja of s.storeIds) {
+      for (const path of ["items", "ingredients"]) {
+        const arquivo = `${path}-${loja}.json`;
+        try {
+          const j = await s.get(loja, path);
+          const arr = Array.isArray(j) ? j : j?.rows || [];
+          writeFileSync(arquivo, JSON.stringify(arr), "utf8");
+          console.log(`[card] loja ${loja} · ${path}: ${arr.length} registro(s) → ${arquivo}`);
+        } catch (e) {
+          console.log(`[card] loja ${loja} · ${path} falhou: ${e.message.slice(0, 100)}`);
+          writeFileSync(arquivo, "[]", "utf8");
+        }
       }
     }
 
