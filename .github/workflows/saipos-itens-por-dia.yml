@@ -1,0 +1,45 @@
+name: SAIPOS itens por dia
+
+concurrency:
+  group: saipos-sessao
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      inicio:
+        description: "Data inicial YYYY-MM-DD (default 2026-03-01)"
+        type: string
+        required: false
+      fim:
+        description: "Data final YYYY-MM-DD"
+        type: string
+        required: false
+
+jobs:
+  itens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Extrair itens por dia
+        env:
+          SAIPOS_USER: ${{ secrets.SAIPOS_USER }}
+          SAIPOS_PASS: ${{ secrets.SAIPOS_PASS }}
+          SAIPOS_BASE_URL: ${{ secrets.SAIPOS_BASE_URL }}
+          SAIPOS_STORE_IDS: ${{ secrets.SAIPOS_STORE_IDS }}
+          DIA_INI: ${{ inputs.inicio }}
+          DIA_FIM: ${{ inputs.fim }}
+        run: node scripts/itens_por_dia.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: itens-por-dia
+          path: itens-por-dia.csv
+          if-no-files-found: warn
